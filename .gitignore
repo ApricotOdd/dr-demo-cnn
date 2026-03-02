@@ -12,3 +12,8 @@ outputs/
 *.pth
 kaggle.json
 .DS_Store
+
+# Secrets
+.env
+.env.*
+*.env
