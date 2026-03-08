@@ -30,7 +30,9 @@ RETRO_CSS = r"""
 :root {
   --bg: #c9c9c9;
   --panel: #dcdcdc;
+  --panel-2: #efefef;
   --border-dark: #7a7a7a;
+  --border-mid: #a2a2a2;
   --border-light: #ffffff;
   --title-blue: #123f7a;
   --title-blue-dark: #0f3363;
@@ -42,36 +44,63 @@ RETRO_CSS = r"""
   --btn-light: #ffffff;
 }
 
-/* Force classic light look */
+/* Force LIGHT color scheme + override Gradio theme vars */
 html, body, .gradio-container {
   background: var(--bg) !important;
   color: var(--text) !important;
   font-family: Tahoma, Verdana, Arial, sans-serif !important;
+  color-scheme: light !important;
+
+  --body-background-fill: var(--bg) !important;
+  --body-background-fill-dark: var(--bg) !important;
+
+  --background-fill-primary: var(--panel) !important;
+  --background-fill-primary-dark: var(--panel) !important;
+  --background-fill-secondary: var(--panel-2) !important;
+  --background-fill-secondary-dark: var(--panel-2) !important;
+
+  --block-background-fill: var(--panel) !important;
+  --block-background-fill-dark: var(--panel) !important;
+  --block-border-color: var(--border-dark) !important;
+  --block-border-color-dark: var(--border-dark) !important;
+
+  --input-background-fill: #ffffff !important;
+  --input-background-fill-dark: #ffffff !important;
+  --input-border-color: #8b8b8b !important;
+  --input-border-color-dark: #8b8b8b !important;
+
+  --button-primary-background-fill: var(--btn) !important;
+  --button-primary-background-fill-dark: var(--btn) !important;
+  --button-primary-text-color: #111 !important;
+  --button-primary-text-color-dark: #111 !important;
+  --button-primary-border-color: var(--btn-dark) !important;
+  --button-primary-border-color-dark: var(--btn-dark) !important;
 }
 
-/* Remove dark theme effects if present */
+/* Hard reset dark mode classes (some builds add .dark) */
 .dark, .dark * {
   color-scheme: light !important;
 }
 
+/* App wrapper */
 #app-root {
   max-width: 1680px;
   margin: 0 auto;
   padding: 8px 6px;
 }
 
-/* Window panel */
+/* Retro window panel */
 .window {
   border: 1px solid var(--border-dark) !important;
   background: var(--panel) !important;
   box-shadow:
     inset 1px 1px 0 var(--border-light),
-    inset -1px -1px 0 #a2a2a2 !important;
+    inset -1px -1px 0 var(--border-mid) !important;
   padding: 0 !important;
   margin-bottom: 10px !important;
 }
 
-/* Full-width title bar like old app windows */
+/* Full-width titlebar */
 .titlebar {
   width: 100%;
   box-sizing: border-box;
@@ -95,8 +124,21 @@ html, body, .gradio-container {
   line-height: 1.35;
 }
 
+/* General block backgrounds to avoid dark cards */
+.gradio-container .block,
+.gradio-container [data-testid="block"],
+.gradio-container .gr-group,
+.gradio-container .gr-box,
+.gradio-container .gr-panel {
+  background: var(--panel) !important;
+  color: #111 !important;
+  border-color: var(--border-dark) !important;
+}
+
 /* Inputs */
-input, textarea, select {
+.gradio-container input,
+.gradio-container textarea,
+.gradio-container select {
   border-radius: 0 !important;
   border: 1px solid #8b8b8b !important;
   background: #ffffff !important;
@@ -104,19 +146,23 @@ input, textarea, select {
   box-shadow: inset 1px 1px 0 #ffffff !important;
 }
 
-/* Checkbox visibility + clickability */
-.gr-checkbox, .gr-checkbox label {
+/* Dropdown wrappers (newer gradio) */
+.gradio-container [data-testid="dropdown"] *,
+.gradio-container [data-testid="textbox"] *,
+.gradio-container [data-testid="number"] * {
   color: #111 !important;
 }
-.gr-checkbox input[type="checkbox"] {
+
+/* Checkbox */
+.gradio-container input[type="checkbox"] {
   accent-color: #123f7a !important;
   width: 16px !important;
   height: 16px !important;
   cursor: pointer !important;
 }
 
-/* Buttons: classic gray beveled, no orange */
-.gr-button {
+/* Buttons */
+.gradio-container button {
   border: 1px solid var(--btn-dark) !important;
   background: var(--btn) !important;
   color: #111 !important;
@@ -126,29 +172,37 @@ input, textarea, select {
     inset -1px -1px 0 #9c9c9c !important;
   font-weight: 600 !important;
 }
-.gr-button:hover {
-  filter: brightness(0.98);
-}
-.gr-button:active {
+.gradio-container button:hover { filter: brightness(0.98); }
+.gradio-container button:active {
   box-shadow:
     inset -1px -1px 0 var(--btn-light),
     inset 1px 1px 0 #9c9c9c !important;
   transform: translateY(1px);
 }
 
+/* Upload/Image containers */
+.gradio-container [data-testid="image"],
+.gradio-container .image-container,
+.gradio-container .gr-image {
+  background: #f3f3f3 !important;
+  border-radius: 0 !important;
+  color: #111 !important;
+}
+
+/* Markdown/labels */
+.gradio-container .prose,
+.gradio-container .gr-markdown,
+.gradio-container label,
+.gradio-container .gr-form,
+.gradio-container p,
+.gradio-container span,
+.gradio-container div {
+  color: #111 !important;
+}
+
 /* Keep spacing tidy */
 .block, .gr-group {
   gap: 6px !important;
-}
-
-/* Images/panels sharp square */
-.image-container, .gr-image {
-  border-radius: 0 !important;
-}
-
-/* Markdown text */
-.gr-markdown, label, .gr-form {
-  color: #111 !important;
 }
 """
 
@@ -258,7 +312,6 @@ class Explainer:
         self.tf = get_transforms(image_size=self.image_size, train=False)
         self.activations = {}
 
-        # Register hooks for available conv/relu/pool blocks
         self.available_layers = []
         for i in [1, 2, 3]:
             conv_name = f"conv{i}"
@@ -276,7 +329,6 @@ class Explainer:
                 self.available_layers.append(f"conv{i}")
 
         if not self.available_layers:
-            # Safety fallback
             self.available_layers = ["conv1"]
 
     def _hook(self, name):
@@ -310,12 +362,12 @@ class Explainer:
             logits = self.model(x)
             probs = F.softmax(logits, dim=1).cpu().numpy()[0]
 
-        inp = x[0, 0].detach().cpu().numpy()        # normalized [-1,1]
-        inp01 = np.clip(inp * 0.5 + 0.5, 0.0, 1.0)  # display [0,1]
+        inp = x[0, 0].detach().cpu().numpy()
+        inp01 = np.clip(inp * 0.5 + 0.5, 0.0, 1.0)
 
-        conv = self.activations[layer_name][0].numpy()      # (C,H,W)
-        relu = self.activations[relu_name][0].numpy()       # (C,H,W)
-        pool = self.activations[pool_name][0].numpy()       # (C,h,w)
+        conv = self.activations[layer_name][0].numpy()
+        relu = self.activations[relu_name][0].numpy()
+        pool = self.activations[pool_name][0].numpy()
 
         strength = np.mean(np.abs(conv), axis=(1, 2))
         best_idx = int(np.argmax(strength))
@@ -325,21 +377,16 @@ class Explainer:
         relu01 = norm01(relu[fmap_idx])
         pool01 = norm01(pool[fmap_idx])
 
-        # Upscale maps for display
         conv_up = resize01(conv01, 224, 224, mode=Image.NEAREST)
         relu_up = resize01(relu01, 224, 224, mode=Image.NEAREST)
         pool_up = resize01(pool01, 224, 224, mode=Image.NEAREST)
         overlay = make_overlay(inp01, conv01, alpha=0.45)
 
-        # Selected + top 3 strongest channels
         sorted_idx = np.argsort(-strength).tolist()
         top_channels = [fmap_idx] + [c for c in sorted_idx if c != fmap_idx][:3]
 
         conv_module = getattr(self.model, layer_name)
-        # conv weights shape: (out_channels, in_channels, 3, 3)
         w = conv_module.weight.detach().cpu().numpy()
-
-        # For conv2/conv3, show average over input channels so we still have 3x3 view
         kernels = [w[c].mean(axis=0) for c in top_channels]
 
         kernel_fig = plot_kernel_grid(
@@ -407,8 +454,11 @@ def build_app(ckpt_path: str):
     default_layer = explainer.available_layers[0]
     default_max = explainer.get_layer_max_channel(default_layer)
 
-    with gr.Blocks(title="DR CNN Retro Explain Console") as demo:
-        gr.HTML(f"<style>{RETRO_CSS}</style>")
+    with gr.Blocks(
+        title="DR CNN Retro Explain Console",
+        theme=gr.themes.Base(),
+        css=RETRO_CSS,
+    ) as demo:
 
         with gr.Column(elem_id="app-root"):
             with gr.Group(elem_classes=["window"]):
@@ -429,12 +479,12 @@ def build_app(ckpt_path: str):
                             layer_select = gr.Dropdown(
                                 choices=explainer.available_layers,
                                 value=default_layer,
-                                label="Convolution Block to Inspect"
+                                label="Convolution Block to Inspect",
                             )
 
                             auto_select = gr.Checkbox(
                                 value=True,
-                                label="Auto-select strongest channel/kernel"
+                                label="Auto-select strongest channel/kernel",
                             )
 
                             manual_idx = gr.Slider(
@@ -443,7 +493,7 @@ def build_app(ckpt_path: str):
                                 step=1,
                                 value=0,
                                 label="Manual channel index (used only when auto-select is OFF)",
-                                interactive=False
+                                interactive=False,
                             )
 
                             run_btn = gr.Button("Run Explain")
@@ -496,11 +546,11 @@ def build_app(ckpt_path: str):
                             out_kernel = gr.Plot()
                             out_strength = gr.Plot()
 
-            clear_btn = gr.ClearButton(
+            gr.ClearButton(
                 components=[
                     inp, out_input, out_conv, out_relu, out_pool,
                     out_overlay, out_kernel, out_strength,
-                    out_probs, out_summary, out_explain
+                    out_probs, out_summary, out_explain,
                 ],
                 value="Clear",
             )
@@ -513,7 +563,7 @@ def build_app(ckpt_path: str):
             inputs=[inp, layer_select, auto_select, manual_idx],
             outputs=[
                 out_input, out_conv, out_relu, out_pool, out_overlay,
-                out_kernel, out_strength, out_probs, out_summary, out_explain
+                out_kernel, out_strength, out_probs, out_summary, out_explain,
             ],
         )
 
