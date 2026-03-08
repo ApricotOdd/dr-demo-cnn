@@ -353,13 +353,13 @@ def build_app(ckpt_path):
                             out_strength = gr.Plot()
 
             clear_btn = gr.ClearButton(
-                "Clear",
-                components=[
-                    inp, out_input, out_conv, out_relu, out_pool,
-                    out_overlay, out_kernel, out_strength,
-                    out_probs, out_summary, out_explain
-                ]
-            )
+    value="Clear",
+    components=[
+        inp, out_input, out_conv, out_relu, out_pool,
+        out_overlay, out_kernel, out_strength,
+        out_probs, out_summary, out_explain
+    ]
+)
 
         auto_select.change(toggle_manual, inputs=[auto_select], outputs=[manual_idx])
         run_btn.click(
