@@ -15,7 +15,7 @@ from transforms import get_transforms
 
 CLASS_NAMES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
 
-# You can update this text with fresh metrics anytime
+# Update this whenever you retrain
 METRICS_MD = """
 **Validation Summary (Best Checkpoint)**  
 - Accuracy: **0.6207**  
@@ -40,7 +40,6 @@ RETRO_CSS = r"""
   --btn-light: #ffffff;
 }
 
-/* App background + typography */
 .gradio-container {
   font-family: Tahoma, Verdana, Arial, sans-serif !important;
   color: var(--text) !important;
@@ -59,7 +58,6 @@ RETRO_CSS = r"""
   margin: 0 auto;
 }
 
-/* Window look */
 .window {
   border: 1px solid var(--panel-border-dark) !important;
   background: var(--panel) !important;
@@ -90,7 +88,6 @@ RETRO_CSS = r"""
   line-height: 1.35;
 }
 
-/* Buttons + controls */
 .gr-button {
   border: 1px solid var(--btn-dark) !important;
   background: var(--btn) !important;
@@ -118,12 +115,10 @@ label, .gr-markdown, .gr-form, .gr-checkbox {
   color: #111 !important;
 }
 
-/* Make panel images feel "framed" */
 .image-container, .gr-image {
   border-radius: 0 !important;
 }
 
-/* Tight spacing */
 .block, .gr-group {
   gap: 6px !important;
 }
@@ -187,6 +182,7 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title):
         if i >= n:
             ax.axis("off")
             continue
+
         k = kernels[i]
         ch = channel_ids[i]
         im = ax.imshow(k, cmap="coolwarm", vmin=-vmax, vmax=vmax)
@@ -198,7 +194,11 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title):
             for c in range(3):
                 v = float(k[r, c])
                 txt_color = "white" if abs(v) > 0.45 * vmax else "black"
-                ax.text(c, r, f"{v:.3f}", ha="center", va="center", fontsize=8.5, color=txt_color, fontweight="bold")
+                ax.text(
+                    c, r, f"{v:.3f}",
+                    ha="center", va="center",
+                    fontsize=8.5, color=txt_color, fontweight="bold"
+                )
 
     if im is not None:
         cbar = fig.colorbar(im, ax=axes.ravel().tolist(), fraction=0.028, pad=0.02)
@@ -222,7 +222,7 @@ class Explainer:
         self.tf = get_transforms(image_size=self.image_size, train=False)
         self.activations = {}
 
-        # Current teaching panel focuses Conv1 block
+        # Focus on first block for teaching basics
         self.model.conv1.register_forward_hook(self._hook("conv1"))
         self.model.relu1.register_forward_hook(self._hook("relu1"))
         self.model.pool1.register_forward_hook(self._hook("pool1"))
@@ -237,7 +237,7 @@ class Explainer:
             return (
                 None, None, None, None, None, None, None, {},
                 "No image loaded.",
-                "Upload a fundus image, then click **Run Explain**."
+                "Upload a fundus image, then click Run Explain."
             )
 
         x = self.tf(pil_img).unsqueeze(0).to(self.device)
@@ -246,10 +246,10 @@ class Explainer:
             logits = self.model(x)
             probs = F.softmax(logits, dim=1).cpu().numpy()[0]
 
-        inp = x[0, 0].detach().cpu().numpy()               # normalized [-1,1]
-        inp01 = np.clip(inp * 0.5 + 0.5, 0.0, 1.0)         # display [0,1]
+        inp = x[0, 0].detach().cpu().numpy()        # normalized [-1,1]
+        inp01 = np.clip(inp * 0.5 + 0.5, 0.0, 1.0)  # display [0,1]
 
-        conv = self.activations["conv1"][0].numpy()        # (16,H,W)
+        conv = self.activations["conv1"][0].numpy()   # (16,H,W)
         relu = self.activations["relu1"][0].numpy()
         pool = self.activations["pool1"][0].numpy()
 
@@ -261,11 +261,11 @@ class Explainer:
         relu01 = norm01(relu[fmap_idx])
         pool01 = norm01(pool[fmap_idx])
 
-        # MaxPool is lower-res; upscale for visibility but keep smaller panel in UI
+        # Pool is lower-res naturally; upscale for viewing
         pool_up = resize01(pool01, 224, 224, mode=Image.NEAREST)
         overlay = make_overlay(inp01, conv01, alpha=0.45)
 
-        # selected + top3 strongest channel kernels
+        # Selected + top 3 strongest channels
         sorted_idx = np.argsort(-strength).tolist()
         top_channels = [fmap_idx] + [c for c in sorted_idx if c != fmap_idx][:3]
         kernels = [self.model.conv1.weight[c, 0].detach().cpu().numpy() for c in top_channels]
@@ -296,8 +296,8 @@ class Explainer:
             f"- Conv1 selected map shows where channel **{fmap_idx}** responds strongly.\n"
             f"- ReLU keeps positive evidence (zeroed fraction: **{relu_zero_frac:.1%}**).\n"
             "- MaxPool keeps strongest local evidence and downsamples before deeper layers.\n"
-            "- Overlay aligns activation with the retinal structure.\n"
-            "- Kernel inspector shows actual learned \(3 \times 3\) weights with numeric values."
+            "- Overlay aligns activation with retinal structure.\n"
+            "- Kernel inspector shows learned 3 x 3 weights with numeric values."
         )
 
         prob_dict = {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}
@@ -325,13 +325,11 @@ def build_app(ckpt_path: str):
     def on_auto_change(auto_select):
         return gr.update(interactive=not auto_select)
 
-    with gr.Blocks(
-        title="DR CNN Retro Explain Console",
-        css=RETRO_CSS,
-        theme=gr.themes.Default(),
-    ) as demo:
+    with gr.Blocks(title="DR CNN Retro Explain Console") as demo:
+        # Version-safe CSS injection (no Blocks css= deprecation, no launch(css=) incompatibility)
+        gr.HTML(f"<style>{RETRO_CSS}</style>")
+
         with gr.Column(elem_id="app-root"):
-            # Header window
             with gr.Group(elem_classes=["window"]):
                 gr.HTML('<div class="titlebar">Diabetic Retinopathy CNN — Retro Explain Console</div>')
                 with gr.Column(elem_classes=["window-body"]):
@@ -340,7 +338,6 @@ def build_app(ckpt_path: str):
                         "and teaching-first explainability.</p>"
                     )
 
-            # Top split: controls + performance/prediction
             with gr.Row(equal_height=True):
                 with gr.Column(scale=5, min_width=360):
                     with gr.Group(elem_classes=["window"]):
@@ -353,8 +350,7 @@ def build_app(ckpt_path: str):
                                 label="Manual channel index (used only when auto-select is OFF)",
                                 interactive=False
                             )
-                            with gr.Row():
-                                run_btn = gr.Button("Run Explain", variant="primary")
+                            run_btn = gr.Button("Run Explain", variant="primary")
 
                 with gr.Column(scale=5, min_width=360):
                     with gr.Group(elem_classes=["window"]):
@@ -365,7 +361,7 @@ def build_app(ckpt_path: str):
                             out_summary = gr.Markdown()
                             out_explain = gr.Markdown()
 
-            # 4 maps in one row (maxpool deliberately smaller)
+            # 4 maps in one row; maxpool intentionally smaller
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1, min_width=220):
                     with gr.Group(elem_classes=["window"]):
@@ -391,7 +387,6 @@ def build_app(ckpt_path: str):
                         with gr.Column(elem_classes=["window-body"]):
                             out_pool = gr.Image(height=170, show_label=False)
 
-            # Bottom diagnostics
             with gr.Row(equal_height=True):
                 with gr.Column(scale=4, min_width=320):
                     with gr.Group(elem_classes=["window"]):
@@ -437,7 +432,6 @@ def main():
     args = parser.parse_args()
 
     demo = build_app(args.ckpt)
-    # Your current gradio build expects plain launch signature
     demo.launch(server_port=args.port, share=args.share)
 
 
