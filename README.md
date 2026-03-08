@@ -2,14 +2,22 @@
 
 A small, learning-focused deep learning project for diabetic retinopathy image classification.
 
-## Project vibe
+## Project Introduction
 
-This is a small project vibe build created for the **Orbis Future Vision Leader Campaign 2025/26: Heal the Future** campaign.
+This is a small AI-assisted project created for the **Orbis Future Vision Leader Campaign 2025/26: Heal the Future** campaign.
 
 It is intended as a practical, educational prototype:
 - simple CNN baseline
 - train/evaluate scripts
 - lightweight explainability demo (Gradio)
+
+## Build note
+
+This project was developed using **AI-assisted (vibe-coded) workflow**:
+- rapid prototyping with AI help
+- human review, editing, and testing by the author
+
+The repository reflects a learning-focused prototype, not a production medical system.
 
 ## Purpose
 
