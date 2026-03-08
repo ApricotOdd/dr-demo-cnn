@@ -28,10 +28,12 @@ METRICS_MD = """
 
 RETRO_CSS = r"""
 :root {
-  --panel: #efefef;
-  --panel-border-dark: #6b6b6b;
-  --panel-border-light: #ffffff;
-  --title: #003c74;
+  --bg: #c9c9c9;
+  --panel: #dcdcdc;
+  --border-dark: #7a7a7a;
+  --border-light: #ffffff;
+  --title-blue: #123f7a;
+  --title-blue-dark: #0f3363;
   --title-text: #ffffff;
   --text: #111111;
   --muted: #333333;
@@ -40,41 +42,46 @@ RETRO_CSS = r"""
   --btn-light: #ffffff;
 }
 
-.gradio-container {
-  font-family: Tahoma, Verdana, Arial, sans-serif !important;
+/* Force classic light look */
+html, body, .gradio-container {
+  background: var(--bg) !important;
   color: var(--text) !important;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      #c6c6c6 0px,
-      #c6c6c6 2px,
-      #c0c0c0 2px,
-      #c0c0c0 4px
-    ) !important;
+  font-family: Tahoma, Verdana, Arial, sans-serif !important;
+}
+
+/* Remove dark theme effects if present */
+.dark, .dark * {
+  color-scheme: light !important;
 }
 
 #app-root {
-  max-width: 1450px;
+  max-width: 1680px;
   margin: 0 auto;
+  padding: 8px 6px;
 }
 
+/* Window panel */
 .window {
-  border: 1px solid var(--panel-border-dark) !important;
+  border: 1px solid var(--border-dark) !important;
   background: var(--panel) !important;
   box-shadow:
-    inset 1px 1px 0 var(--panel-border-light),
-    inset -1px -1px 0 #a0a0a0 !important;
+    inset 1px 1px 0 var(--border-light),
+    inset -1px -1px 0 #a2a2a2 !important;
   padding: 0 !important;
   margin-bottom: 10px !important;
 }
 
+/* Full-width title bar like old app windows */
 .titlebar {
-  background: var(--title);
+  width: 100%;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, var(--title-blue), var(--title-blue-dark));
   color: var(--title-text);
   font-weight: bold;
   font-size: 13px;
-  padding: 6px 8px;
-  border-bottom: 1px solid #00284e;
+  letter-spacing: 0.1px;
+  padding: 7px 9px;
+  border-bottom: 1px solid #0b2a50;
 }
 
 .window-body {
@@ -88,6 +95,27 @@ RETRO_CSS = r"""
   line-height: 1.35;
 }
 
+/* Inputs */
+input, textarea, select {
+  border-radius: 0 !important;
+  border: 1px solid #8b8b8b !important;
+  background: #ffffff !important;
+  color: #111 !important;
+  box-shadow: inset 1px 1px 0 #ffffff !important;
+}
+
+/* Checkbox visibility + clickability */
+.gr-checkbox, .gr-checkbox label {
+  color: #111 !important;
+}
+.gr-checkbox input[type="checkbox"] {
+  accent-color: #123f7a !important;
+  width: 16px !important;
+  height: 16px !important;
+  cursor: pointer !important;
+}
+
+/* Buttons: classic gray beveled, no orange */
 .gr-button {
   border: 1px solid var(--btn-dark) !important;
   background: var(--btn) !important;
@@ -96,6 +124,10 @@ RETRO_CSS = r"""
   box-shadow:
     inset 1px 1px 0 var(--btn-light),
     inset -1px -1px 0 #9c9c9c !important;
+  font-weight: 600 !important;
+}
+.gr-button:hover {
+  filter: brightness(0.98);
 }
 .gr-button:active {
   box-shadow:
@@ -104,23 +136,19 @@ RETRO_CSS = r"""
   transform: translateY(1px);
 }
 
-input, textarea, select {
-  border-radius: 0 !important;
-  border: 1px solid #888 !important;
-  background: #fff !important;
-  box-shadow: inset 1px 1px 0 #fff !important;
+/* Keep spacing tidy */
+.block, .gr-group {
+  gap: 6px !important;
 }
 
-label, .gr-markdown, .gr-form, .gr-checkbox {
-  color: #111 !important;
-}
-
+/* Images/panels sharp square */
 .image-container, .gr-image {
   border-radius: 0 !important;
 }
 
-.block, .gr-group {
-  gap: 6px !important;
+/* Markdown text */
+.gr-markdown, label, .gr-form {
+  color: #111 !important;
 }
 """
 
@@ -153,12 +181,12 @@ def make_overlay(gray01: np.ndarray, heat01: np.ndarray, alpha=0.45) -> np.ndarr
     return to_uint8(out)
 
 
-def plot_strengths(strength: np.ndarray, selected: int):
+def plot_strengths(strength: np.ndarray, selected: int, layer_name: str):
     fig, ax = plt.subplots(figsize=(7.2, 2.7), dpi=120)
     colors = ["#1f73be"] * len(strength)
     colors[selected] = "#2ca24f"
     ax.bar(np.arange(len(strength)), strength, color=colors)
-    ax.set_title("Conv1 Channel Activation Strength (mean |activation|)", fontsize=10)
+    ax.set_title(f"{layer_name.upper()} Channel Activation Strength (mean |activation|)", fontsize=10)
     ax.set_xlabel("Channel")
     ax.set_ylabel("Strength")
     ax.set_xticks(np.arange(len(strength)))
@@ -209,6 +237,14 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title):
     return fig
 
 
+def probs_to_markdown(probs: np.ndarray) -> str:
+    order = np.argsort(-probs)
+    lines = ["| Class | Probability |", "|---|---:|"]
+    for i in order:
+        lines.append(f"| {CLASS_NAMES[i]} | {probs[i]*100:.2f}% |")
+    return "\n".join(lines)
+
+
 class Explainer:
     def __init__(self, ckpt_path: str):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -222,23 +258,51 @@ class Explainer:
         self.tf = get_transforms(image_size=self.image_size, train=False)
         self.activations = {}
 
-        # Focus on first block for teaching basics
-        self.model.conv1.register_forward_hook(self._hook("conv1"))
-        self.model.relu1.register_forward_hook(self._hook("relu1"))
-        self.model.pool1.register_forward_hook(self._hook("pool1"))
+        # Register hooks for available conv/relu/pool blocks
+        self.available_layers = []
+        for i in [1, 2, 3]:
+            conv_name = f"conv{i}"
+            relu_name = f"relu{i}"
+            pool_name = f"pool{i}"
+
+            if hasattr(self.model, conv_name):
+                getattr(self.model, conv_name).register_forward_hook(self._hook(conv_name))
+            if hasattr(self.model, relu_name):
+                getattr(self.model, relu_name).register_forward_hook(self._hook(relu_name))
+            if hasattr(self.model, pool_name):
+                getattr(self.model, pool_name).register_forward_hook(self._hook(pool_name))
+
+            if hasattr(self.model, conv_name) and hasattr(self.model, relu_name) and hasattr(self.model, pool_name):
+                self.available_layers.append(f"conv{i}")
+
+        if not self.available_layers:
+            # Safety fallback
+            self.available_layers = ["conv1"]
 
     def _hook(self, name):
         def fn(_, __, out):
             self.activations[name] = out.detach().cpu()
         return fn
 
-    def run(self, pil_img, auto_select=True, manual_idx=0):
+    def get_layer_max_channel(self, layer_name: str) -> int:
+        module = getattr(self.model, layer_name, None)
+        if module is None:
+            return 0
+        return int(module.out_channels - 1)
+
+    def run(self, pil_img, layer_name="conv1", auto_select=True, manual_idx=0):
         if pil_img is None:
             return (
-                None, None, None, None, None, None, None, {},
+                None, None, None, None, None, None, None, "",
                 "No image loaded.",
                 "Upload a fundus image, then click Run Explain."
             )
+
+        if layer_name not in self.available_layers:
+            layer_name = self.available_layers[0]
+
+        relu_name = layer_name.replace("conv", "relu")
+        pool_name = layer_name.replace("conv", "pool")
 
         x = self.tf(pil_img).unsqueeze(0).to(self.device)
 
@@ -249,9 +313,9 @@ class Explainer:
         inp = x[0, 0].detach().cpu().numpy()        # normalized [-1,1]
         inp01 = np.clip(inp * 0.5 + 0.5, 0.0, 1.0)  # display [0,1]
 
-        conv = self.activations["conv1"][0].numpy()   # (16,H,W)
-        relu = self.activations["relu1"][0].numpy()
-        pool = self.activations["pool1"][0].numpy()
+        conv = self.activations[layer_name][0].numpy()      # (C,H,W)
+        relu = self.activations[relu_name][0].numpy()       # (C,H,W)
+        pool = self.activations[pool_name][0].numpy()       # (C,h,w)
 
         strength = np.mean(np.abs(conv), axis=(1, 2))
         best_idx = int(np.argmax(strength))
@@ -261,21 +325,29 @@ class Explainer:
         relu01 = norm01(relu[fmap_idx])
         pool01 = norm01(pool[fmap_idx])
 
-        # Pool is lower-res naturally; upscale for viewing
+        # Upscale maps for display
+        conv_up = resize01(conv01, 224, 224, mode=Image.NEAREST)
+        relu_up = resize01(relu01, 224, 224, mode=Image.NEAREST)
         pool_up = resize01(pool01, 224, 224, mode=Image.NEAREST)
         overlay = make_overlay(inp01, conv01, alpha=0.45)
 
         # Selected + top 3 strongest channels
         sorted_idx = np.argsort(-strength).tolist()
         top_channels = [fmap_idx] + [c for c in sorted_idx if c != fmap_idx][:3]
-        kernels = [self.model.conv1.weight[c, 0].detach().cpu().numpy() for c in top_channels]
+
+        conv_module = getattr(self.model, layer_name)
+        # conv weights shape: (out_channels, in_channels, 3, 3)
+        w = conv_module.weight.detach().cpu().numpy()
+
+        # For conv2/conv3, show average over input channels so we still have 3x3 view
+        kernels = [w[c].mean(axis=0) for c in top_channels]
 
         kernel_fig = plot_kernel_grid(
             np.array(kernels),
             top_channels,
-            title="Kernel Inspector (3x3 values): selected + top-3 channels"
+            title=f"Kernel Inspector ({layer_name.upper()}): selected + top-3 channels"
         )
-        strength_fig = plot_strengths(strength, fmap_idx)
+        strength_fig = plot_strengths(strength, fmap_idx, layer_name)
 
         pred_idx = int(np.argmax(probs))
         pred_name = CLASS_NAMES[pred_idx]
@@ -285,6 +357,7 @@ class Explainer:
         score = float(strength[fmap_idx])
 
         summary = (
+            f"**Layer:** `{layer_name}`  \n"
             f"**Selected channel/kernel:** `{fmap_idx}` "
             f"({'auto strongest' if auto_select else 'manual override'})  \n"
             f"**Selection score (mean |conv activation|):** `{score:.4f}`  \n"
@@ -293,24 +366,25 @@ class Explainer:
 
         explain = (
             "### Explain Panel\n"
-            f"- Conv1 selected map shows where channel **{fmap_idx}** responds strongly.\n"
+            f"- Selected feature map comes from **{layer_name}**, channel **{fmap_idx}**.\n"
             f"- ReLU keeps positive evidence (zeroed fraction: **{relu_zero_frac:.1%}**).\n"
             "- MaxPool keeps strongest local evidence and downsamples before deeper layers.\n"
-            "- Overlay aligns activation with retinal structure.\n"
-            "- Kernel inspector shows learned 3 x 3 weights with numeric values."
+            "- Overlay aligns selected conv activation with retinal structure.\n"
+            "- Kernel inspector shows learned 3 x 3 values "
+            "(for deeper convs: averaged across input channels)."
         )
 
-        prob_dict = {CLASS_NAMES[i]: float(probs[i]) for i in range(len(CLASS_NAMES))}
+        probs_md = probs_to_markdown(probs)
 
         return (
             to_uint8(inp01),
-            to_uint8(conv01),
-            to_uint8(relu01),
+            to_uint8(conv_up),
+            to_uint8(relu_up),
             to_uint8(pool_up),
             overlay,
             kernel_fig,
             strength_fig,
-            prob_dict,
+            probs_md,
             summary,
             explain,
         )
@@ -319,14 +393,21 @@ class Explainer:
 def build_app(ckpt_path: str):
     explainer = Explainer(ckpt_path)
 
-    def infer(img, auto_select, manual_idx):
-        return explainer.run(img, auto_select, manual_idx)
+    def infer(img, layer_name, auto_select, manual_idx):
+        return explainer.run(img, layer_name, auto_select, manual_idx)
 
     def on_auto_change(auto_select):
         return gr.update(interactive=not auto_select)
 
+    def on_layer_change(layer_name, current_idx):
+        max_idx = explainer.get_layer_max_channel(layer_name)
+        safe_idx = int(min(max(0, int(current_idx)), max_idx))
+        return gr.update(minimum=0, maximum=max_idx, value=safe_idx)
+
+    default_layer = explainer.available_layers[0]
+    default_max = explainer.get_layer_max_channel(default_layer)
+
     with gr.Blocks(title="DR CNN Retro Explain Console") as demo:
-        # Version-safe CSS injection (no Blocks css= deprecation, no launch(css=) incompatibility)
         gr.HTML(f"<style>{RETRO_CSS}</style>")
 
         with gr.Column(elem_id="app-root"):
@@ -339,29 +420,43 @@ def build_app(ckpt_path: str):
                     )
 
             with gr.Row(equal_height=True):
-                with gr.Column(scale=5, min_width=360):
+                with gr.Column(scale=5, min_width=380):
                     with gr.Group(elem_classes=["window"]):
                         gr.HTML('<div class="titlebar">Controls</div>')
                         with gr.Column(elem_classes=["window-body"]):
                             inp = gr.Image(type="pil", label="Fundus Image", height=320)
-                            auto_select = gr.Checkbox(value=True, label="Auto-select strongest Conv1 channel/kernel")
+
+                            layer_select = gr.Dropdown(
+                                choices=explainer.available_layers,
+                                value=default_layer,
+                                label="Convolution Block to Inspect"
+                            )
+
+                            auto_select = gr.Checkbox(
+                                value=True,
+                                label="Auto-select strongest channel/kernel"
+                            )
+
                             manual_idx = gr.Slider(
-                                minimum=0, maximum=15, step=1, value=0,
+                                minimum=0,
+                                maximum=default_max,
+                                step=1,
+                                value=0,
                                 label="Manual channel index (used only when auto-select is OFF)",
                                 interactive=False
                             )
-                            run_btn = gr.Button("Run Explain", variant="primary")
 
-                with gr.Column(scale=5, min_width=360):
+                            run_btn = gr.Button("Run Explain")
+
+                with gr.Column(scale=5, min_width=380):
                     with gr.Group(elem_classes=["window"]):
                         gr.HTML('<div class="titlebar">Performance + Prediction</div>')
                         with gr.Column(elem_classes=["window-body"]):
                             gr.Markdown(METRICS_MD)
-                            out_probs = gr.Label(label="Dense + Softmax Output")
+                            out_probs = gr.Markdown(label="Dense + Softmax Output")
                             out_summary = gr.Markdown()
                             out_explain = gr.Markdown()
 
-            # 4 maps in one row; maxpool intentionally smaller
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1, min_width=220):
                     with gr.Group(elem_classes=["window"]):
@@ -371,7 +466,7 @@ def build_app(ckpt_path: str):
 
                 with gr.Column(scale=1, min_width=220):
                     with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Conv1 Selected Map</div>')
+                        gr.HTML('<div class="titlebar">Conv Map (Selected)</div>')
                         with gr.Column(elem_classes=["window-body"]):
                             out_conv = gr.Image(height=220, show_label=False)
 
@@ -381,22 +476,22 @@ def build_app(ckpt_path: str):
                         with gr.Column(elem_classes=["window-body"]):
                             out_relu = gr.Image(height=220, show_label=False)
 
-                with gr.Column(scale=1, min_width=180):
+                with gr.Column(scale=1, min_width=200):
                     with gr.Group(elem_classes=["window"]):
                         gr.HTML('<div class="titlebar">MaxPool Map</div>')
                         with gr.Column(elem_classes=["window-body"]):
                             out_pool = gr.Image(height=170, show_label=False)
 
             with gr.Row(equal_height=True):
-                with gr.Column(scale=4, min_width=320):
+                with gr.Column(scale=4, min_width=340):
                     with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Overlay (Input + Conv1 Heat)</div>')
+                        gr.HTML('<div class="titlebar">Overlay (Input + Selected Conv Heat)</div>')
                         with gr.Column(elem_classes=["window-body"]):
                             out_overlay = gr.Image(height=260, show_label=False)
 
-                with gr.Column(scale=6, min_width=440):
+                with gr.Column(scale=6, min_width=460):
                     with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Kernel Inspector + Strengths</div>')
+                        gr.HTML('<div class="titlebar">Kernel Inspector + Channel Strengths</div>')
                         with gr.Column(elem_classes=["window-body"]):
                             out_kernel = gr.Plot()
                             out_strength = gr.Plot()
@@ -411,10 +506,11 @@ def build_app(ckpt_path: str):
             )
 
         auto_select.change(on_auto_change, inputs=[auto_select], outputs=[manual_idx])
+        layer_select.change(on_layer_change, inputs=[layer_select, manual_idx], outputs=[manual_idx])
 
         run_btn.click(
             infer,
-            inputs=[inp, auto_select, manual_idx],
+            inputs=[inp, layer_select, auto_select, manual_idx],
             outputs=[
                 out_input, out_conv, out_relu, out_pool, out_overlay,
                 out_kernel, out_strength, out_probs, out_summary, out_explain
