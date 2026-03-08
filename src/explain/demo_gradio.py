@@ -1,5 +1,4 @@
 import argparse
-import inspect
 import os
 import sys
 from pathlib import Path
@@ -26,131 +25,6 @@ METRICS_MD = """
 - Samples: **733**
 
 **Takeaway:** strong on class 0/2, weaker on severe minority classes (3/4).
-"""
-
-APP_CSS = r"""
-:root {
-  --bg: #0b1220;
-  --panel: #111a2b;
-  --panel-2: #17233a;
-  --muted: #8ea2c8;
-  --text: #e6edf8;
-  --line: #223454;
-  --accent: #4f7cff;
-  --accent-2: #36c2a1;
-}
-
-html, body, .gradio-container {
-  background: radial-gradient(circle at top left, #101a2e 0%, #0b1220 45%, #090f1b 100%) !important;
-  color: var(--text) !important;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif !important;
-}
-
-#app-root {
-  max-width: 1640px;
-  margin: 0 auto;
-  padding: 12px 10px 18px 10px;
-}
-
-.card {
-  background: linear-gradient(180deg, var(--panel) 0%, #0f1828 100%) !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-  margin-bottom: 10px !important;
-}
-
-.card-header {
-  padding: 10px 12px;
-  background: linear-gradient(90deg, #162642 0%, #11203a 100%);
-  border-bottom: 1px solid var(--line);
-  color: #dfe8fb;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-.card-body {
-  padding: 12px;
-}
-
-.subtle {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.gradio-container .block,
-.gradio-container [data-testid="block"],
-.gradio-container .gr-group,
-.gradio-container .gr-box,
-.gradio-container .gr-panel {
-  background: transparent !important;
-  border: none !important;
-  color: var(--text) !important;
-}
-
-.gradio-container label,
-.gradio-container .gr-markdown,
-.gradio-container .prose,
-.gradio-container p,
-.gradio-container span,
-.gradio-container div {
-  color: var(--text) !important;
-}
-
-.gradio-container .prose table {
-  color: var(--text) !important;
-}
-
-.gradio-container input,
-.gradio-container textarea,
-.gradio-container select {
-  background: var(--panel-2) !important;
-  color: var(--text) !important;
-  border: 1px solid #2a3f67 !important;
-  border-radius: 10px !important;
-}
-
-.gradio-container input[type="checkbox"] {
-  accent-color: var(--accent) !important;
-}
-
-.gradio-container button {
-  background: linear-gradient(180deg, #2c4d9b 0%, #243f82 100%) !important;
-  border: 1px solid #4063b3 !important;
-  color: #f1f6ff !important;
-  border-radius: 10px !important;
-  font-weight: 700 !important;
-}
-.gradio-container button:hover {
-  filter: brightness(1.06);
-}
-
-.gradio-container [data-testid="image"],
-.gradio-container .image-container,
-.gradio-container .gr-image {
-  background: #0e1728 !important;
-  border: 1px solid #24395f !important;
-  border-radius: 10px !important;
-}
-
-hr {
-  border-color: #25395d !important;
-}
-
-.kpi {
-  display: inline-block;
-  padding: 4px 8px;
-  border: 1px solid #2b4168;
-  border-radius: 999px;
-  color: #cfe0ff;
-  background: #12213a;
-  font-size: 11px;
-  margin-right: 6px;
-}
 """
 
 
@@ -184,13 +58,13 @@ def make_overlay(gray01: np.ndarray, heat01: np.ndarray, alpha=0.45) -> np.ndarr
 
 def plot_strengths(strength: np.ndarray, selected: int, layer_name: str):
     fig, ax = plt.subplots(figsize=(7.2, 2.8), dpi=120)
-    colors = ["#5f85ff"] * len(strength)
-    colors[selected] = "#35c7a5"
+    colors = ["#4C78A8"] * len(strength)
+    colors[selected] = "#54A24B"
     ax.bar(np.arange(len(strength)), strength, color=colors)
-    ax.set_title(f"{layer_name.upper()} channel activation strength", fontsize=10)
+    ax.set_title(f"{layer_name.upper()} channel activation strength (mean |activation|)", fontsize=10)
     ax.set_xlabel("Channel")
-    ax.set_ylabel("Mean abs activation")
-    ax.grid(axis="y", linestyle="--", alpha=0.25)
+    ax.set_ylabel("Strength")
+    ax.grid(axis="y", linestyle="--", alpha=0.3)
     fig.tight_layout()
     return fig
 
@@ -247,8 +121,8 @@ class Explainer:
         if not os.path.isfile(ckpt_path):
             raise FileNotFoundError(
                 f"Checkpoint not found:\n  {ckpt_path}\n\n"
-                "If Colab runtime reset, /content gets wiped.\n"
-                "Use Drive path, for example:\n"
+                "If Colab runtime reset, /content is wiped.\n"
+                "Use your Drive checkpoint path, e.g.:\n"
                 "  --ckpt /content/drive/MyDrive/dr-demo-cnn-checkpoints/best.pt"
             )
 
@@ -263,18 +137,17 @@ class Explainer:
         self.tf = get_transforms(image_size=self.image_size, train=False)
         self.activations = {}
 
-        # Hook expected blocks conv1/relu1/pool1 ... conv3/relu3/pool3 if present
         self.available_layers = []
         for i in [1, 2, 3]:
             c, r, p = f"conv{i}", f"relu{i}", f"pool{i}"
+
             if hasattr(self.model, c):
                 getattr(self.model, c).register_forward_hook(self._hook(c))
+                self.available_layers.append(c)
             if hasattr(self.model, r):
                 getattr(self.model, r).register_forward_hook(self._hook(r))
             if hasattr(self.model, p):
                 getattr(self.model, p).register_forward_hook(self._hook(p))
-            if hasattr(self.model, c):
-                self.available_layers.append(c)
 
         if not self.available_layers:
             raise RuntimeError("No supported conv layers found (expected conv1/conv2/conv3).")
@@ -290,10 +163,7 @@ class Explainer:
 
     def _require_activation(self, key: str):
         if key not in self.activations:
-            raise RuntimeError(
-                f"Activation '{key}' not captured.\n"
-                "This usually means the model forward does not use that module directly."
-            )
+            raise RuntimeError(f"Activation '{key}' was not captured during forward pass.")
 
     def run(self, pil_img, layer_name="conv1", auto_select=True, manual_idx=0):
         if pil_img is None:
@@ -316,7 +186,6 @@ class Explainer:
             logits = self.model(x)
             probs = F.softmax(logits, dim=1).cpu().numpy()[0]
 
-        # Ensure hooks fired
         self._require_activation(layer_name)
         self._require_activation(relu_name)
         self._require_activation(pool_name)
@@ -324,11 +193,10 @@ class Explainer:
         inp = x[0, 0].detach().cpu().numpy()
         inp01 = np.clip(inp * 0.5 + 0.5, 0.0, 1.0)
 
-        conv = self.activations[layer_name][0].numpy()  # [C,H,W]
+        conv = self.activations[layer_name][0].numpy()
         relu = self.activations[relu_name][0].numpy()
         pool = self.activations[pool_name][0].numpy()
 
-        # Strongest channel by mean abs activation
         strength = np.mean(np.abs(conv), axis=(1, 2))
         strongest_idx = int(np.argmax(strength))
 
@@ -356,7 +224,7 @@ class Explainer:
         kernel_fig = plot_kernel_grid(
             np.array(kernels),
             top_channels,
-            title=f"Kernel inspector ({layer_name.upper()}): selected + top-3 channels"
+            title=f"Kernel inspector ({layer_name.upper()}): selected + top-3 channels",
         )
         strength_fig = plot_strengths(strength, fmap_idx, layer_name)
 
@@ -384,17 +252,14 @@ class Explainer:
             "(deeper layers shown as input-channel mean)."
         )
 
-        top5 = sorted_idx[:5]
-        debug_text = (
+        debug = (
             f"Strongest channel in {layer_name}: **{strongest_idx}**  \n"
-            f"Top-5 by strength: `{top5}`  \n"
+            f"Top-5 channels by strength: `{sorted_idx[:5]}`  \n"
             f"Mode: `{'AUTO' if auto_select else 'MANUAL'}`"
         )
 
-        probs_md = probs_to_markdown(probs)
-
-        # IMPORTANT: update slider value so auto-select is visible in UI
         slider_update = gr.update(value=int(fmap_idx))
+        probs_md = probs_to_markdown(probs)
 
         return (
             to_uint8(inp01),
@@ -407,12 +272,12 @@ class Explainer:
             probs_md,
             summary,
             explain,
-            debug_text,
+            debug,
             slider_update,
         )
 
 
-def build_app(ckpt_path: str, inject_css_fallback: bool = False):
+def build_app(ckpt_path: str):
     explainer = Explainer(ckpt_path)
 
     def infer(img, layer_name, auto_select, manual_idx):
@@ -429,105 +294,57 @@ def build_app(ckpt_path: str, inject_css_fallback: bool = False):
     default_layer = explainer.available_layers[0]
     default_max = explainer.get_layer_max_channel(default_layer)
 
-    with gr.Blocks(title="DR CNN Explain Console") as demo:
-        if inject_css_fallback:
-            gr.HTML(f"<style>{APP_CSS}</style>")
+    with gr.Blocks(title="DR CNN Layer Explorer") as demo:
+        gr.Markdown("## Diabetic Retinopathy CNN Layer Explorer")
+        gr.Markdown("Upload a fundus image and inspect what CNN layers are passing forward.")
 
-        with gr.Column(elem_id="app-root"):
-            with gr.Group(elem_classes=["card"]):
-                gr.HTML('<div class="card-header">Diabetic Retinopathy CNN · Explain Console</div>')
-                with gr.Column(elem_classes=["card-body"]):
-                    gr.Markdown(
-                        "<p class='subtle'>Clean diagnostics view for channel-level interpretability. "
-                        "No gimmicks, just model internals and evidence maps.</p>"
+        with gr.Row(equal_height=True):
+            with gr.Column(scale=5, min_width=360):
+                with gr.Group():
+                    inp = gr.Image(type="pil", label="Fundus Image", height=320)
+                    layer_select = gr.Dropdown(
+                        choices=explainer.available_layers,
+                        value=default_layer,
+                        label="Convolution Block to Inspect",
                     )
+                    auto_select = gr.Checkbox(value=True, label="Auto-select strongest channel/kernel")
+                    manual_idx = gr.Slider(
+                        minimum=0,
+                        maximum=default_max,
+                        step=1,
+                        value=0,
+                        label="Manual channel index (used when auto-select is OFF)",
+                        interactive=False,
+                    )
+                    run_btn = gr.Button("Run Explain")
 
-            with gr.Row(equal_height=True):
-                with gr.Column(scale=5, min_width=380):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">Controls</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            inp = gr.Image(type="pil", label="Fundus Image", height=320)
+            with gr.Column(scale=5, min_width=360):
+                with gr.Group():
+                    gr.Markdown(METRICS_MD)
+                    out_probs = gr.Markdown(label="Dense + Softmax Output")
+                    out_summary = gr.Markdown()
+                    out_explain = gr.Markdown()
+                    out_debug = gr.Markdown()
 
-                            layer_select = gr.Dropdown(
-                                choices=explainer.available_layers,
-                                value=default_layer,
-                                label="Convolution Block",
-                            )
+        with gr.Row(equal_height=True):
+            out_input = gr.Image(label="Input (single-channel used by CNN)", height=220)
+            out_conv = gr.Image(label="Convolution output (selected channel)", height=220)
+            out_relu = gr.Image(label="ReLU output", height=220)
+            out_pool = gr.Image(label="MaxPool output", height=170)
 
-                            auto_select = gr.Checkbox(
-                                value=True,
-                                label="Auto-select strongest channel",
-                            )
+        with gr.Row(equal_height=True):
+            out_overlay = gr.Image(label="Overlay (input + selected conv heat)", height=260)
+            with gr.Column():
+                out_kernel = gr.Plot(label="Kernel Inspector")
+                out_strength = gr.Plot(label="Activation Strengths")
 
-                            manual_idx = gr.Slider(
-                                minimum=0,
-                                maximum=default_max,
-                                step=1,
-                                value=0,
-                                label="Channel Index (used only when auto is OFF)",
-                                interactive=False,
-                            )
-
-                            run_btn = gr.Button("Run Explain")
-
-                with gr.Column(scale=5, min_width=380):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">Prediction + Notes</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            gr.Markdown(METRICS_MD)
-                            out_probs = gr.Markdown(label="Class Probabilities")
-                            out_summary = gr.Markdown()
-                            out_explain = gr.Markdown()
-                            out_debug = gr.Markdown()
-
-            with gr.Row(equal_height=True):
-                with gr.Column(scale=1, min_width=220):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">Input (Gray)</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            out_input = gr.Image(height=220, show_label=False)
-
-                with gr.Column(scale=1, min_width=220):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">Conv Map</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            out_conv = gr.Image(height=220, show_label=False)
-
-                with gr.Column(scale=1, min_width=220):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">ReLU Map</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            out_relu = gr.Image(height=220, show_label=False)
-
-                with gr.Column(scale=1, min_width=200):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">MaxPool Map</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            out_pool = gr.Image(height=170, show_label=False)
-
-            with gr.Row(equal_height=True):
-                with gr.Column(scale=4, min_width=340):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">Overlay (Input + Conv Evidence)</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            out_overlay = gr.Image(height=260, show_label=False)
-
-                with gr.Column(scale=6, min_width=460):
-                    with gr.Group(elem_classes=["card"]):
-                        gr.HTML('<div class="card-header">Kernel Inspector + Strength Plot</div>')
-                        with gr.Column(elem_classes=["card-body"]):
-                            out_kernel = gr.Plot()
-                            out_strength = gr.Plot()
-
-            gr.ClearButton(
-                components=[
-                    inp, out_input, out_conv, out_relu, out_pool,
-                    out_overlay, out_kernel, out_strength,
-                    out_probs, out_summary, out_explain, out_debug
-                ],
-                value="Clear",
-            )
+        gr.ClearButton(
+            components=[
+                inp, out_input, out_conv, out_relu, out_pool, out_overlay,
+                out_kernel, out_strength, out_probs, out_summary, out_explain, out_debug
+            ],
+            value="Clear",
+        )
 
         auto_select.change(on_auto_change, inputs=[auto_select], outputs=[manual_idx])
         layer_select.change(on_layer_change, inputs=[layer_select, manual_idx], outputs=[manual_idx])
@@ -538,7 +355,7 @@ def build_app(ckpt_path: str, inject_css_fallback: bool = False):
             outputs=[
                 out_input, out_conv, out_relu, out_pool, out_overlay,
                 out_kernel, out_strength, out_probs, out_summary, out_explain,
-                out_debug, manual_idx,  # <- slider updates to selected channel
+                out_debug, manual_idx,
             ],
         )
 
@@ -552,22 +369,8 @@ def main():
     parser.add_argument("--port", type=int, default=7860)
     args = parser.parse_args()
 
-    launch_sig = inspect.signature(gr.Blocks.launch).parameters
-    supports_theme_in_launch = "theme" in launch_sig
-    supports_css_in_launch = "css" in launch_sig
-
-    demo = build_app(args.ckpt, inject_css_fallback=not supports_css_in_launch)
-
-    launch_kwargs = {
-        "server_port": args.port,
-        "share": args.share,
-    }
-    if supports_theme_in_launch:
-        launch_kwargs["theme"] = gr.themes.Base()
-    if supports_css_in_launch:
-        launch_kwargs["css"] = APP_CSS
-
-    demo.launch(**launch_kwargs)
+    demo = build_app(args.ckpt)
+    demo.launch(server_port=args.port, share=args.share)
 
 
 if __name__ == "__main__":
