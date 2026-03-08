@@ -73,7 +73,7 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
     cols = 2
     rows = int(np.ceil(n / cols))
 
-    # Square figure so Kernel view visually matches square overlay panel
+    # Square figure for square-ish panel
     fig, axes = plt.subplots(rows, cols, figsize=(7.0, 7.0), dpi=120)
     axes = np.array(axes).reshape(rows, cols)
 
@@ -315,7 +315,7 @@ def build_app(ckpt_path: str):
             out_relu = gr.Image(label="ReLU output", height=210)
             out_pool = gr.Image(label="Pool output", height=210)
 
-        # Display Row 2 (overlay + kernel both square)
+        # Display Row 2 (Overlay + Kernel view)
         with gr.Row(equal_height=True):
             with gr.Column(scale=1, min_width=420):
                 out_overlay = gr.Image(
@@ -324,7 +324,7 @@ def build_app(ckpt_path: str):
                     width=620,
                 )
             with gr.Column(scale=1, min_width=420):
-                out_kernel = gr.Plot(label="Kernel view", height=620)
+                out_kernel = gr.Plot(label="Kernel view")
 
         # Display Row 3 (full width)
         with gr.Row():
@@ -332,8 +332,15 @@ def build_app(ckpt_path: str):
 
         gr.ClearButton(
             components=[
-                inp, out_input, out_conv, out_relu, out_pool, out_overlay,
-                out_kernel, out_strength, out_class_plot
+                inp,
+                out_input,
+                out_conv,
+                out_relu,
+                out_pool,
+                out_overlay,
+                out_kernel,
+                out_strength,
+                out_class_plot,
             ],
             value="Clear",
         )
@@ -345,8 +352,15 @@ def build_app(ckpt_path: str):
             infer,
             inputs=[inp, layer_select, auto_select, manual_idx],
             outputs=[
-                out_input, out_conv, out_relu, out_pool, out_overlay,
-                out_kernel, out_strength, out_class_plot, manual_idx,
+                out_input,
+                out_conv,
+                out_relu,
+                out_pool,
+                out_overlay,
+                out_kernel,
+                out_strength,
+                out_class_plot,
+                manual_idx,
             ],
         )
 
