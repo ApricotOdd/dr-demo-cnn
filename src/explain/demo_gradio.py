@@ -28,96 +28,58 @@ METRICS_MD = """
 **Takeaway:** strong on class 0/2, weaker on severe minority classes (3/4).
 """
 
-RETRO_CSS = r"""
+APP_CSS = r"""
 :root {
-  --bg: #c9c9c9;
-  --panel: #dcdcdc;
-  --panel-2: #efefef;
-  --border-dark: #7a7a7a;
-  --border-mid: #a2a2a2;
-  --border-light: #ffffff;
-  --title-blue: #123f7a;
-  --title-blue-dark: #0f3363;
-  --title-text: #ffffff;
-  --text: #111111;
-  --muted: #333333;
-  --btn: #dcdcdc;
-  --btn-dark: #808080;
-  --btn-light: #ffffff;
+  --bg: #0b1220;
+  --panel: #111a2b;
+  --panel-2: #17233a;
+  --muted: #8ea2c8;
+  --text: #e6edf8;
+  --line: #223454;
+  --accent: #4f7cff;
+  --accent-2: #36c2a1;
 }
 
 html, body, .gradio-container {
-  background: var(--bg) !important;
+  background: radial-gradient(circle at top left, #101a2e 0%, #0b1220 45%, #090f1b 100%) !important;
   color: var(--text) !important;
-  font-family: Tahoma, Verdana, Arial, sans-serif !important;
-  color-scheme: light !important;
-
-  --body-background-fill: var(--bg) !important;
-  --body-background-fill-dark: var(--bg) !important;
-  --background-fill-primary: var(--panel) !important;
-  --background-fill-primary-dark: var(--panel) !important;
-  --background-fill-secondary: var(--panel-2) !important;
-  --background-fill-secondary-dark: var(--panel-2) !important;
-
-  --block-background-fill: var(--panel) !important;
-  --block-background-fill-dark: var(--panel) !important;
-  --block-border-color: var(--border-dark) !important;
-  --block-border-color-dark: var(--border-dark) !important;
-
-  --input-background-fill: #ffffff !important;
-  --input-background-fill-dark: #ffffff !important;
-  --input-border-color: #8b8b8b !important;
-  --input-border-color-dark: #8b8b8b !important;
-
-  --button-primary-background-fill: var(--btn) !important;
-  --button-primary-background-fill-dark: var(--btn) !important;
-  --button-primary-text-color: #111 !important;
-  --button-primary-text-color-dark: #111 !important;
-  --button-primary-border-color: var(--btn-dark) !important;
-  --button-primary-border-color-dark: var(--btn-dark) !important;
-}
-
-.dark, .dark * {
-  color-scheme: light !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif !important;
 }
 
 #app-root {
-  max-width: 1680px;
+  max-width: 1640px;
   margin: 0 auto;
-  padding: 8px 6px;
+  padding: 12px 10px 18px 10px;
 }
 
-.window {
-  border: 1px solid var(--border-dark) !important;
-  background: var(--panel) !important;
-  box-shadow:
-    inset 1px 1px 0 var(--border-light),
-    inset -1px -1px 0 var(--border-mid) !important;
-  padding: 0 !important;
+.card {
+  background: linear-gradient(180deg, var(--panel) 0%, #0f1828 100%) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
   margin-bottom: 10px !important;
 }
 
-.titlebar {
-  width: 100%;
-  box-sizing: border-box;
-  background: linear-gradient(to bottom, var(--title-blue), var(--title-blue-dark));
-  color: var(--title-text);
-  font-weight: bold;
+.card-header {
+  padding: 10px 12px;
+  background: linear-gradient(90deg, #162642 0%, #11203a 100%);
+  border-bottom: 1px solid var(--line);
+  color: #dfe8fb;
   font-size: 13px;
-  letter-spacing: 0.1px;
-  padding: 7px 9px;
-  border-bottom: 1px solid #0b2a50;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 
-.window-body {
-  padding: 10px;
+.card-body {
+  padding: 12px;
 }
 
-.small-note {
+.subtle {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
 .gradio-container .block,
@@ -125,77 +87,76 @@ html, body, .gradio-container {
 .gradio-container .gr-group,
 .gradio-container .gr-box,
 .gradio-container .gr-panel {
-  background: var(--panel) !important;
-  color: #111 !important;
-  border-color: var(--border-dark) !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--text) !important;
+}
+
+.gradio-container label,
+.gradio-container .gr-markdown,
+.gradio-container .prose,
+.gradio-container p,
+.gradio-container span,
+.gradio-container div {
+  color: var(--text) !important;
+}
+
+.gradio-container .prose table {
+  color: var(--text) !important;
 }
 
 .gradio-container input,
 .gradio-container textarea,
 .gradio-container select {
-  border-radius: 0 !important;
-  border: 1px solid #8b8b8b !important;
-  background: #ffffff !important;
-  color: #111 !important;
-  box-shadow: inset 1px 1px 0 #ffffff !important;
-}
-
-.gradio-container [data-testid="dropdown"] *,
-.gradio-container [data-testid="textbox"] *,
-.gradio-container [data-testid="number"] * {
-  color: #111 !important;
+  background: var(--panel-2) !important;
+  color: var(--text) !important;
+  border: 1px solid #2a3f67 !important;
+  border-radius: 10px !important;
 }
 
 .gradio-container input[type="checkbox"] {
-  accent-color: #123f7a !important;
-  width: 16px !important;
-  height: 16px !important;
-  cursor: pointer !important;
+  accent-color: var(--accent) !important;
 }
 
 .gradio-container button {
-  border: 1px solid var(--btn-dark) !important;
-  background: var(--btn) !important;
-  color: #111 !important;
-  border-radius: 0 !important;
-  box-shadow:
-    inset 1px 1px 0 var(--btn-light),
-    inset -1px -1px 0 #9c9c9c !important;
-  font-weight: 600 !important;
+  background: linear-gradient(180deg, #2c4d9b 0%, #243f82 100%) !important;
+  border: 1px solid #4063b3 !important;
+  color: #f1f6ff !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
 }
-
-.gradio-container button:hover { filter: brightness(0.98); }
-
-.gradio-container button:active {
-  box-shadow:
-    inset -1px -1px 0 var(--btn-light),
-    inset 1px 1px 0 #9c9c9c !important;
-  transform: translateY(1px);
+.gradio-container button:hover {
+  filter: brightness(1.06);
 }
 
 .gradio-container [data-testid="image"],
 .gradio-container .image-container,
 .gradio-container .gr-image {
-  background: #f3f3f3 !important;
-  border-radius: 0 !important;
-  color: #111 !important;
+  background: #0e1728 !important;
+  border: 1px solid #24395f !important;
+  border-radius: 10px !important;
 }
 
-.gradio-container .prose,
-.gradio-container .gr-markdown,
-.gradio-container label,
-.gradio-container .gr-form,
-.gradio-container p,
-.gradio-container span,
-.gradio-container div {
-  color: #111 !important;
+hr {
+  border-color: #25395d !important;
+}
+
+.kpi {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid #2b4168;
+  border-radius: 999px;
+  color: #cfe0ff;
+  background: #12213a;
+  font-size: 11px;
+  margin-right: 6px;
 }
 """
 
 
 def norm01(x: np.ndarray) -> np.ndarray:
     x = x.astype(np.float32)
-    mn, mx = x.min(), x.max()
+    mn, mx = float(x.min()), float(x.max())
     if mx - mn < 1e-8:
         return np.zeros_like(x, dtype=np.float32)
     return (x - mn) / (mx - mn)
@@ -215,27 +176,26 @@ def resize01(x01: np.ndarray, h: int, w: int, mode=Image.BILINEAR) -> np.ndarray
 def make_overlay(gray01: np.ndarray, heat01: np.ndarray, alpha=0.45) -> np.ndarray:
     h, w = gray01.shape
     heat_up = resize01(heat01, h, w, mode=Image.BILINEAR)
-    heat_rgb = plt.get_cmap("jet")(heat_up)[..., :3]
+    heat_rgb = plt.get_cmap("magma")(heat_up)[..., :3]
     base = np.stack([gray01, gray01, gray01], axis=-1)
     out = np.clip((1 - alpha) * base + alpha * heat_rgb, 0.0, 1.0)
     return to_uint8(out)
 
 
 def plot_strengths(strength: np.ndarray, selected: int, layer_name: str):
-    fig, ax = plt.subplots(figsize=(7.2, 2.7), dpi=120)
-    colors = ["#1f73be"] * len(strength)
-    colors[selected] = "#2ca24f"
+    fig, ax = plt.subplots(figsize=(7.2, 2.8), dpi=120)
+    colors = ["#5f85ff"] * len(strength)
+    colors[selected] = "#35c7a5"
     ax.bar(np.arange(len(strength)), strength, color=colors)
-    ax.set_title(f"{layer_name.upper()} Channel Activation Strength (mean |activation|)", fontsize=10)
+    ax.set_title(f"{layer_name.upper()} channel activation strength", fontsize=10)
     ax.set_xlabel("Channel")
-    ax.set_ylabel("Strength")
-    ax.set_xticks(np.arange(len(strength)))
-    ax.grid(axis="y", linestyle="--", alpha=0.35)
+    ax.set_ylabel("Mean abs activation")
+    ax.grid(axis="y", linestyle="--", alpha=0.25)
     fig.tight_layout()
     return fig
 
 
-def plot_kernel_grid(kernels: np.ndarray, channel_ids, title):
+def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
     n = len(channel_ids)
     cols = 2
     rows = int(np.ceil(n / cols))
@@ -244,6 +204,7 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title):
 
     vmax = float(np.max(np.abs(kernels))) + 1e-8
     im = None
+
     for i in range(rows * cols):
         ax = axes[i // cols, i % cols]
         if i >= n:
@@ -276,7 +237,7 @@ def probs_to_markdown(probs: np.ndarray) -> str:
     order = np.argsort(-probs)
     lines = ["| Class | Probability |", "|---|---:|"]
     for i in order:
-        lines.append(f"| {CLASS_NAMES[i]} | {probs[i]*100:.2f}% |")
+        lines.append(f"| {CLASS_NAMES[i]} | {probs[i] * 100:.2f}% |")
     return "\n".join(lines)
 
 
@@ -286,15 +247,15 @@ class Explainer:
         if not os.path.isfile(ckpt_path):
             raise FileNotFoundError(
                 f"Checkpoint not found:\n  {ckpt_path}\n\n"
-                "Tip: in Colab runtime reset, /content files disappear.\n"
-                "Use your Drive path, e.g.:\n"
+                "If Colab runtime reset, /content gets wiped.\n"
+                "Use Drive path, for example:\n"
                 "  --ckpt /content/drive/MyDrive/dr-demo-cnn-checkpoints/best.pt"
             )
 
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         ckpt = torch.load(ckpt_path, map_location=self.device)
 
-        self.image_size = ckpt.get("image_size", 224)
+        self.image_size = int(ckpt.get("image_size", 224))
         self.model = SimpleDRCNN(num_classes=ckpt.get("num_classes", 5)).to(self.device)
         self.model.load_state_dict(ckpt["model_state_dict"])
         self.model.eval()
@@ -302,24 +263,21 @@ class Explainer:
         self.tf = get_transforms(image_size=self.image_size, train=False)
         self.activations = {}
 
+        # Hook expected blocks conv1/relu1/pool1 ... conv3/relu3/pool3 if present
         self.available_layers = []
         for i in [1, 2, 3]:
-            conv_name = f"conv{i}"
-            relu_name = f"relu{i}"
-            pool_name = f"pool{i}"
-
-            if hasattr(self.model, conv_name):
-                getattr(self.model, conv_name).register_forward_hook(self._hook(conv_name))
-            if hasattr(self.model, relu_name):
-                getattr(self.model, relu_name).register_forward_hook(self._hook(relu_name))
-            if hasattr(self.model, pool_name):
-                getattr(self.model, pool_name).register_forward_hook(self._hook(pool_name))
-
-            if hasattr(self.model, conv_name) and hasattr(self.model, relu_name) and hasattr(self.model, pool_name):
-                self.available_layers.append(conv_name)
+            c, r, p = f"conv{i}", f"relu{i}", f"pool{i}"
+            if hasattr(self.model, c):
+                getattr(self.model, c).register_forward_hook(self._hook(c))
+            if hasattr(self.model, r):
+                getattr(self.model, r).register_forward_hook(self._hook(r))
+            if hasattr(self.model, p):
+                getattr(self.model, p).register_forward_hook(self._hook(p))
+            if hasattr(self.model, c):
+                self.available_layers.append(c)
 
         if not self.available_layers:
-            self.available_layers = ["conv1"]
+            raise RuntimeError("No supported conv layers found (expected conv1/conv2/conv3).")
 
     def _hook(self, name):
         def fn(_, __, out):
@@ -327,17 +285,24 @@ class Explainer:
         return fn
 
     def get_layer_max_channel(self, layer_name: str) -> int:
-        module = getattr(self.model, layer_name, None)
-        if module is None:
-            return 0
-        return int(module.out_channels - 1)
+        mod = getattr(self.model, layer_name, None)
+        return int(mod.out_channels - 1) if mod is not None else 0
+
+    def _require_activation(self, key: str):
+        if key not in self.activations:
+            raise RuntimeError(
+                f"Activation '{key}' not captured.\n"
+                "This usually means the model forward does not use that module directly."
+            )
 
     def run(self, pil_img, layer_name="conv1", auto_select=True, manual_idx=0):
         if pil_img is None:
             return (
                 None, None, None, None, None, None, None, "",
                 "No image loaded.",
-                "Upload a fundus image, then click Run Explain."
+                "Upload a fundus image, then click Run Explain.",
+                "No debug info.",
+                gr.update()
             )
 
         if layer_name not in self.available_layers:
@@ -347,21 +312,30 @@ class Explainer:
         pool_name = layer_name.replace("conv", "pool")
 
         x = self.tf(pil_img).unsqueeze(0).to(self.device)
-
         with torch.no_grad():
             logits = self.model(x)
             probs = F.softmax(logits, dim=1).cpu().numpy()[0]
 
+        # Ensure hooks fired
+        self._require_activation(layer_name)
+        self._require_activation(relu_name)
+        self._require_activation(pool_name)
+
         inp = x[0, 0].detach().cpu().numpy()
         inp01 = np.clip(inp * 0.5 + 0.5, 0.0, 1.0)
 
-        conv = self.activations[layer_name][0].numpy()
+        conv = self.activations[layer_name][0].numpy()  # [C,H,W]
         relu = self.activations[relu_name][0].numpy()
         pool = self.activations[pool_name][0].numpy()
 
+        # Strongest channel by mean abs activation
         strength = np.mean(np.abs(conv), axis=(1, 2))
-        best_idx = int(np.argmax(strength))
-        fmap_idx = best_idx if auto_select else (int(manual_idx) % conv.shape[0])
+        strongest_idx = int(np.argmax(strength))
+
+        if auto_select:
+            fmap_idx = strongest_idx
+        else:
+            fmap_idx = int(np.clip(int(manual_idx), 0, conv.shape[0] - 1))
 
         conv01 = norm01(conv[fmap_idx])
         relu01 = norm01(relu[fmap_idx])
@@ -382,7 +356,7 @@ class Explainer:
         kernel_fig = plot_kernel_grid(
             np.array(kernels),
             top_channels,
-            title=f"Kernel Inspector ({layer_name.upper()}): selected + top-3 channels"
+            title=f"Kernel inspector ({layer_name.upper()}): selected + top-3 channels"
         )
         strength_fig = plot_strengths(strength, fmap_idx, layer_name)
 
@@ -395,22 +369,32 @@ class Explainer:
 
         summary = (
             f"**Layer:** `{layer_name}`  \n"
-            f"**Selected channel/kernel:** `{fmap_idx}` ({'auto strongest' if auto_select else 'manual override'})  \n"
-            f"**Selection score (mean |conv activation|):** `{score:.4f}`  \n"
+            f"**Selected channel:** `{fmap_idx}` ({'auto strongest' if auto_select else 'manual'})  \n"
+            f"**Selection score (mean |activation|):** `{score:.4f}`  \n"
             f"**Prediction:** `{pred_name}` with confidence `{pred_conf:.2%}`"
         )
 
         explain = (
             "### Explain Panel\n"
-            f"- Selected feature map from **{layer_name}**, channel **{fmap_idx}**.\n"
-            f"- ReLU keeps positive evidence (zeroed fraction: **{relu_zero_frac:.1%}**).\n"
-            "- MaxPool keeps strongest local evidence and downsamples.\n"
-            "- Overlay aligns selected conv activation with retinal structure.\n"
-            "- Kernel inspector shows learned \(3 \\times 3\) values "
-            "(for deeper convs: averaged across input channels)."
+            f"- Feature map from **{layer_name}**, channel **{fmap_idx}**.\n"
+            f"- ReLU zeroed fraction for selected map: **{relu_zero_frac:.1%}**.\n"
+            "- MaxPool keeps strongest local evidence while downsampling.\n"
+            "- Overlay aligns selected convolution evidence with retinal structure.\n"
+            "- Kernel inspector shows learned \(3 \\times 3\) weights "
+            "(deeper layers shown as input-channel mean)."
+        )
+
+        top5 = sorted_idx[:5]
+        debug_text = (
+            f"Strongest channel in {layer_name}: **{strongest_idx}**  \n"
+            f"Top-5 by strength: `{top5}`  \n"
+            f"Mode: `{'AUTO' if auto_select else 'MANUAL'}`"
         )
 
         probs_md = probs_to_markdown(probs)
+
+        # IMPORTANT: update slider value so auto-select is visible in UI
+        slider_update = gr.update(value=int(fmap_idx))
 
         return (
             to_uint8(inp01),
@@ -423,6 +407,8 @@ class Explainer:
             probs_md,
             summary,
             explain,
+            debug_text,
+            slider_update,
         )
 
 
@@ -437,42 +423,41 @@ def build_app(ckpt_path: str, inject_css_fallback: bool = False):
 
     def on_layer_change(layer_name, current_idx):
         max_idx = explainer.get_layer_max_channel(layer_name)
-        safe_idx = int(min(max(0, int(current_idx)), max_idx))
+        safe_idx = int(np.clip(int(current_idx), 0, max_idx))
         return gr.update(minimum=0, maximum=max_idx, value=safe_idx)
 
     default_layer = explainer.available_layers[0]
     default_max = explainer.get_layer_max_channel(default_layer)
 
-    with gr.Blocks(title="DR CNN Retro Explain Console") as demo:
-        # Fallback for very old Gradio versions that don't accept css in launch()
+    with gr.Blocks(title="DR CNN Explain Console") as demo:
         if inject_css_fallback:
-            gr.HTML(f"<style>{RETRO_CSS}</style>")
+            gr.HTML(f"<style>{APP_CSS}</style>")
 
         with gr.Column(elem_id="app-root"):
-            with gr.Group(elem_classes=["window"]):
-                gr.HTML('<div class="titlebar">Diabetic Retinopathy CNN — Retro Explain Console</div>')
-                with gr.Column(elem_classes=["window-body"]):
+            with gr.Group(elem_classes=["card"]):
+                gr.HTML('<div class="card-header">Diabetic Retinopathy CNN · Explain Console</div>')
+                with gr.Column(elem_classes=["card-body"]):
                     gr.Markdown(
-                        "<p class='small-note'>Classic panel mode: compact controls, clear borders, "
-                        "and teaching-first explainability.</p>"
+                        "<p class='subtle'>Clean diagnostics view for channel-level interpretability. "
+                        "No gimmicks, just model internals and evidence maps.</p>"
                     )
 
             with gr.Row(equal_height=True):
                 with gr.Column(scale=5, min_width=380):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Controls</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">Controls</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             inp = gr.Image(type="pil", label="Fundus Image", height=320)
 
                             layer_select = gr.Dropdown(
                                 choices=explainer.available_layers,
                                 value=default_layer,
-                                label="Convolution Block to Inspect",
+                                label="Convolution Block",
                             )
 
                             auto_select = gr.Checkbox(
                                 value=True,
-                                label="Auto-select strongest channel/kernel",
+                                label="Auto-select strongest channel",
                             )
 
                             manual_idx = gr.Slider(
@@ -480,57 +465,58 @@ def build_app(ckpt_path: str, inject_css_fallback: bool = False):
                                 maximum=default_max,
                                 step=1,
                                 value=0,
-                                label="Manual channel index (used only when auto-select is OFF)",
+                                label="Channel Index (used only when auto is OFF)",
                                 interactive=False,
                             )
 
                             run_btn = gr.Button("Run Explain")
 
                 with gr.Column(scale=5, min_width=380):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Performance + Prediction</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">Prediction + Notes</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             gr.Markdown(METRICS_MD)
-                            out_probs = gr.Markdown(label="Dense + Softmax Output")
+                            out_probs = gr.Markdown(label="Class Probabilities")
                             out_summary = gr.Markdown()
                             out_explain = gr.Markdown()
+                            out_debug = gr.Markdown()
 
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1, min_width=220):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Input (CNN Gray)</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">Input (Gray)</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             out_input = gr.Image(height=220, show_label=False)
 
                 with gr.Column(scale=1, min_width=220):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Conv Map (Selected)</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">Conv Map</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             out_conv = gr.Image(height=220, show_label=False)
 
                 with gr.Column(scale=1, min_width=220):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">ReLU Map</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">ReLU Map</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             out_relu = gr.Image(height=220, show_label=False)
 
                 with gr.Column(scale=1, min_width=200):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">MaxPool Map</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">MaxPool Map</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             out_pool = gr.Image(height=170, show_label=False)
 
             with gr.Row(equal_height=True):
                 with gr.Column(scale=4, min_width=340):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Overlay (Input + Selected Conv Heat)</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">Overlay (Input + Conv Evidence)</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             out_overlay = gr.Image(height=260, show_label=False)
 
                 with gr.Column(scale=6, min_width=460):
-                    with gr.Group(elem_classes=["window"]):
-                        gr.HTML('<div class="titlebar">Kernel Inspector + Channel Strengths</div>')
-                        with gr.Column(elem_classes=["window-body"]):
+                    with gr.Group(elem_classes=["card"]):
+                        gr.HTML('<div class="card-header">Kernel Inspector + Strength Plot</div>')
+                        with gr.Column(elem_classes=["card-body"]):
                             out_kernel = gr.Plot()
                             out_strength = gr.Plot()
 
@@ -538,7 +524,7 @@ def build_app(ckpt_path: str, inject_css_fallback: bool = False):
                 components=[
                     inp, out_input, out_conv, out_relu, out_pool,
                     out_overlay, out_kernel, out_strength,
-                    out_probs, out_summary, out_explain,
+                    out_probs, out_summary, out_explain, out_debug
                 ],
                 value="Clear",
             )
@@ -552,6 +538,7 @@ def build_app(ckpt_path: str, inject_css_fallback: bool = False):
             outputs=[
                 out_input, out_conv, out_relu, out_pool, out_overlay,
                 out_kernel, out_strength, out_probs, out_summary, out_explain,
+                out_debug, manual_idx,  # <- slider updates to selected channel
             ],
         )
 
@@ -578,7 +565,7 @@ def main():
     if supports_theme_in_launch:
         launch_kwargs["theme"] = gr.themes.Base()
     if supports_css_in_launch:
-        launch_kwargs["css"] = RETRO_CSS
+        launch_kwargs["css"] = APP_CSS
 
     demo.launch(**launch_kwargs)
 
