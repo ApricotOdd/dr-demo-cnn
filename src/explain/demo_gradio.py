@@ -72,7 +72,9 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
     n = len(channel_ids)
     cols = 2
     rows = int(np.ceil(n / cols))
-    fig, axes = plt.subplots(rows, cols, figsize=(6.4, 3.1 * rows), dpi=120)
+
+    # Square figure so Kernel view visually matches square overlay panel
+    fig, axes = plt.subplots(rows, cols, figsize=(7.0, 7.0), dpi=120)
     axes = np.array(axes).reshape(rows, cols)
 
     vmax = float(np.max(np.abs(kernels))) + 1e-8
@@ -94,9 +96,18 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
             for c in range(3):
                 v = float(k[r, c])
                 txt_color = "white" if abs(v) > 0.45 * vmax else "black"
-                ax.text(c, r, f"{v:.2f}", ha="center", va="center", fontsize=8, color=txt_color, fontweight="bold")
+                ax.text(
+                    c,
+                    r,
+                    f"{v:.2f}",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    color=txt_color,
+                    fontweight="bold",
+                )
 
-    fig.suptitle(title, fontsize=11, y=0.995)
+    fig.suptitle(title, fontsize=11, y=0.98)
     fig.tight_layout()
     return fig
 
@@ -271,7 +282,7 @@ def build_app(ckpt_path: str):
     }
     """
 
-    with gr.Blocks(title="DR CNN Layer Explorer", css=css) as demo:
+    with gr.Blocks(title="DR CNN Layer Explorer") as demo:
         gr.Markdown("## DR CNN Layer Explorer (Classroom Demo)")
 
         with gr.Row(equal_height=True):
@@ -304,10 +315,16 @@ def build_app(ckpt_path: str):
             out_relu = gr.Image(label="ReLU output", height=210)
             out_pool = gr.Image(label="Pool output", height=210)
 
-        # Display Row 2
+        # Display Row 2 (overlay + kernel both square)
         with gr.Row(equal_height=True):
-            out_overlay = gr.Image(label="Overlay: input + conv heat", height=250)
-            out_kernel = gr.Plot(label="Kernel view")
+            with gr.Column(scale=1, min_width=420):
+                out_overlay = gr.Image(
+                    label="Overlay: input + conv heat",
+                    height=620,
+                    width=620,
+                )
+            with gr.Column(scale=1, min_width=420):
+                out_kernel = gr.Plot(label="Kernel view", height=620)
 
         # Display Row 3 (full width)
         with gr.Row():
@@ -333,7 +350,7 @@ def build_app(ckpt_path: str):
             ],
         )
 
-    return demo
+    return demo, css
 
 
 def main():
@@ -343,8 +360,8 @@ def main():
     parser.add_argument("--port", type=int, default=7860)
     args = parser.parse_args()
 
-    demo = build_app(args.ckpt)
-    demo.launch(server_port=args.port, share=args.share)
+    demo, css = build_app(args.ckpt)
+    demo.launch(server_port=args.port, share=args.share, css=css)
 
 
 if __name__ == "__main__":
