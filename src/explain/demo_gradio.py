@@ -1,9 +1,12 @@
 import argparse
+import inspect
 import os
 import sys
-import numpy as np
-import matplotlib.pyplot as plt
+from pathlib import Path
+
 import gradio as gr
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
@@ -15,7 +18,6 @@ from transforms import get_transforms
 
 CLASS_NAMES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
 
-# Update this whenever you retrain
 METRICS_MD = """
 **Validation Summary (Best Checkpoint)**  
 - Accuracy: **0.6207**  
@@ -44,7 +46,6 @@ RETRO_CSS = r"""
   --btn-light: #ffffff;
 }
 
-/* Force LIGHT color scheme + override Gradio theme vars */
 html, body, .gradio-container {
   background: var(--bg) !important;
   color: var(--text) !important;
@@ -53,7 +54,6 @@ html, body, .gradio-container {
 
   --body-background-fill: var(--bg) !important;
   --body-background-fill-dark: var(--bg) !important;
-
   --background-fill-primary: var(--panel) !important;
   --background-fill-primary-dark: var(--panel) !important;
   --background-fill-secondary: var(--panel-2) !important;
@@ -77,19 +77,16 @@ html, body, .gradio-container {
   --button-primary-border-color-dark: var(--btn-dark) !important;
 }
 
-/* Hard reset dark mode classes (some builds add .dark) */
 .dark, .dark * {
   color-scheme: light !important;
 }
 
-/* App wrapper */
 #app-root {
   max-width: 1680px;
   margin: 0 auto;
   padding: 8px 6px;
 }
 
-/* Retro window panel */
 .window {
   border: 1px solid var(--border-dark) !important;
   background: var(--panel) !important;
@@ -100,7 +97,6 @@ html, body, .gradio-container {
   margin-bottom: 10px !important;
 }
 
-/* Full-width titlebar */
 .titlebar {
   width: 100%;
   box-sizing: border-box;
@@ -124,7 +120,6 @@ html, body, .gradio-container {
   line-height: 1.35;
 }
 
-/* General block backgrounds to avoid dark cards */
 .gradio-container .block,
 .gradio-container [data-testid="block"],
 .gradio-container .gr-group,
@@ -135,7 +130,6 @@ html, body, .gradio-container {
   border-color: var(--border-dark) !important;
 }
 
-/* Inputs */
 .gradio-container input,
 .gradio-container textarea,
 .gradio-container select {
@@ -146,14 +140,12 @@ html, body, .gradio-container {
   box-shadow: inset 1px 1px 0 #ffffff !important;
 }
 
-/* Dropdown wrappers (newer gradio) */
 .gradio-container [data-testid="dropdown"] *,
 .gradio-container [data-testid="textbox"] *,
 .gradio-container [data-testid="number"] * {
   color: #111 !important;
 }
 
-/* Checkbox */
 .gradio-container input[type="checkbox"] {
   accent-color: #123f7a !important;
   width: 16px !important;
@@ -161,7 +153,6 @@ html, body, .gradio-container {
   cursor: pointer !important;
 }
 
-/* Buttons */
 .gradio-container button {
   border: 1px solid var(--btn-dark) !important;
   background: var(--btn) !important;
@@ -172,7 +163,9 @@ html, body, .gradio-container {
     inset -1px -1px 0 #9c9c9c !important;
   font-weight: 600 !important;
 }
+
 .gradio-container button:hover { filter: brightness(0.98); }
+
 .gradio-container button:active {
   box-shadow:
     inset -1px -1px 0 var(--btn-light),
@@ -180,7 +173,6 @@ html, body, .gradio-container {
   transform: translateY(1px);
 }
 
-/* Upload/Image containers */
 .gradio-container [data-testid="image"],
 .gradio-container .image-container,
 .gradio-container .gr-image {
@@ -189,7 +181,6 @@ html, body, .gradio-container {
   color: #111 !important;
 }
 
-/* Markdown/labels */
 .gradio-container .prose,
 .gradio-container .gr-markdown,
 .gradio-container label,
@@ -198,11 +189,6 @@ html, body, .gradio-container {
 .gradio-container span,
 .gradio-container div {
   color: #111 !important;
-}
-
-/* Keep spacing tidy */
-.block, .gr-group {
-  gap: 6px !important;
 }
 """
 
@@ -253,7 +239,6 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title):
     n = len(channel_ids)
     cols = 2
     rows = int(np.ceil(n / cols))
-
     fig, axes = plt.subplots(rows, cols, figsize=(6.4, 3.1 * rows), dpi=120)
     axes = np.array(axes).reshape(rows, cols)
 
@@ -276,11 +261,7 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title):
             for c in range(3):
                 v = float(k[r, c])
                 txt_color = "white" if abs(v) > 0.45 * vmax else "black"
-                ax.text(
-                    c, r, f"{v:.3f}",
-                    ha="center", va="center",
-                    fontsize=8.5, color=txt_color, fontweight="bold"
-                )
+                ax.text(c, r, f"{v:.3f}", ha="center", va="center", fontsize=8.5, color=txt_color, fontweight="bold")
 
     if im is not None:
         cbar = fig.colorbar(im, ax=axes.ravel().tolist(), fraction=0.028, pad=0.02)
@@ -301,10 +282,19 @@ def probs_to_markdown(probs: np.ndarray) -> str:
 
 class Explainer:
     def __init__(self, ckpt_path: str):
+        ckpt_path = str(Path(ckpt_path).expanduser())
+        if not os.path.isfile(ckpt_path):
+            raise FileNotFoundError(
+                f"Checkpoint not found:\n  {ckpt_path}\n\n"
+                "Tip: in Colab runtime reset, /content files disappear.\n"
+                "Use your Drive path, e.g.:\n"
+                "  --ckpt /content/drive/MyDrive/dr-demo-cnn-checkpoints/best.pt"
+            )
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         ckpt = torch.load(ckpt_path, map_location=self.device)
-        self.image_size = ckpt.get("image_size", 224)
 
+        self.image_size = ckpt.get("image_size", 224)
         self.model = SimpleDRCNN(num_classes=ckpt.get("num_classes", 5)).to(self.device)
         self.model.load_state_dict(ckpt["model_state_dict"])
         self.model.eval()
@@ -326,7 +316,7 @@ class Explainer:
                 getattr(self.model, pool_name).register_forward_hook(self._hook(pool_name))
 
             if hasattr(self.model, conv_name) and hasattr(self.model, relu_name) and hasattr(self.model, pool_name):
-                self.available_layers.append(f"conv{i}")
+                self.available_layers.append(conv_name)
 
         if not self.available_layers:
             self.available_layers = ["conv1"]
@@ -405,19 +395,18 @@ class Explainer:
 
         summary = (
             f"**Layer:** `{layer_name}`  \n"
-            f"**Selected channel/kernel:** `{fmap_idx}` "
-            f"({'auto strongest' if auto_select else 'manual override'})  \n"
+            f"**Selected channel/kernel:** `{fmap_idx}` ({'auto strongest' if auto_select else 'manual override'})  \n"
             f"**Selection score (mean |conv activation|):** `{score:.4f}`  \n"
             f"**Prediction:** `{pred_name}` with confidence `{pred_conf:.2%}`"
         )
 
         explain = (
             "### Explain Panel\n"
-            f"- Selected feature map comes from **{layer_name}**, channel **{fmap_idx}**.\n"
+            f"- Selected feature map from **{layer_name}**, channel **{fmap_idx}**.\n"
             f"- ReLU keeps positive evidence (zeroed fraction: **{relu_zero_frac:.1%}**).\n"
-            "- MaxPool keeps strongest local evidence and downsamples before deeper layers.\n"
+            "- MaxPool keeps strongest local evidence and downsamples.\n"
             "- Overlay aligns selected conv activation with retinal structure.\n"
-            "- Kernel inspector shows learned 3 x 3 values "
+            "- Kernel inspector shows learned \(3 \\times 3\) values "
             "(for deeper convs: averaged across input channels)."
         )
 
@@ -437,7 +426,7 @@ class Explainer:
         )
 
 
-def build_app(ckpt_path: str):
+def build_app(ckpt_path: str, inject_css_fallback: bool = False):
     explainer = Explainer(ckpt_path)
 
     def infer(img, layer_name, auto_select, manual_idx):
@@ -454,11 +443,10 @@ def build_app(ckpt_path: str):
     default_layer = explainer.available_layers[0]
     default_max = explainer.get_layer_max_channel(default_layer)
 
-    with gr.Blocks(
-        title="DR CNN Retro Explain Console",
-        theme=gr.themes.Base(),
-        css=RETRO_CSS,
-    ) as demo:
+    with gr.Blocks(title="DR CNN Retro Explain Console") as demo:
+        # Fallback for very old Gradio versions that don't accept css in launch()
+        if inject_css_fallback:
+            gr.HTML(f"<style>{RETRO_CSS}</style>")
 
         with gr.Column(elem_id="app-root"):
             with gr.Group(elem_classes=["window"]):
@@ -577,8 +565,22 @@ def main():
     parser.add_argument("--port", type=int, default=7860)
     args = parser.parse_args()
 
-    demo = build_app(args.ckpt)
-    demo.launch(server_port=args.port, share=args.share)
+    launch_sig = inspect.signature(gr.Blocks.launch).parameters
+    supports_theme_in_launch = "theme" in launch_sig
+    supports_css_in_launch = "css" in launch_sig
+
+    demo = build_app(args.ckpt, inject_css_fallback=not supports_css_in_launch)
+
+    launch_kwargs = {
+        "server_port": args.port,
+        "share": args.share,
+    }
+    if supports_theme_in_launch:
+        launch_kwargs["theme"] = gr.themes.Base()
+    if supports_css_in_launch:
+        launch_kwargs["css"] = RETRO_CSS
+
+    demo.launch(**launch_kwargs)
 
 
 if __name__ == "__main__":
