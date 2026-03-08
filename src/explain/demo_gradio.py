@@ -16,15 +16,15 @@ from transforms import get_transforms
 
 
 CLASS_NAMES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
+CLASS_LABELS = [f"Class {i}: {name}" for i, name in enumerate(CLASS_NAMES)]
 
 METRICS_MD = """
-**Validation Summary (Best Checkpoint)**  
-- Accuracy: **0.6207**  
-- Macro-F1: **0.4161**  
-- Weighted-F1: **0.6327**  
-- Samples: **733**
+### Model snapshot
+- **Accuracy:** 62.1%
+- **Macro-F1:** 41.6%
+- **Weighted-F1:** 63.3%
 
-**Takeaway:** strong on class 0/2, weaker on severe minority classes (3/4).
+Good at common classes, weaker on rare severe cases.
 """
 
 
@@ -61,9 +61,9 @@ def plot_strengths(strength: np.ndarray, selected: int, layer_name: str):
     colors = ["#4C78A8"] * len(strength)
     colors[selected] = "#54A24B"
     ax.bar(np.arange(len(strength)), strength, color=colors)
-    ax.set_title(f"{layer_name.upper()} channel activation strength (mean |activation|)", fontsize=10)
+    ax.set_title(f"{layer_name.upper()} channel strengths", fontsize=10)
     ax.set_xlabel("Channel")
-    ax.set_ylabel("Strength")
+    ax.set_ylabel("Mean |activation|")
     ax.grid(axis="y", linestyle="--", alpha=0.3)
     fig.tight_layout()
     return fig
@@ -96,7 +96,7 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
             for c in range(3):
                 v = float(k[r, c])
                 txt_color = "white" if abs(v) > 0.45 * vmax else "black"
-                ax.text(c, r, f"{v:.3f}", ha="center", va="center", fontsize=8.5, color=txt_color, fontweight="bold")
+                ax.text(c, r, f"{v:.2f}", ha="center", va="center", fontsize=8, color=txt_color, fontweight="bold")
 
     if im is not None:
         cbar = fig.colorbar(im, ax=axes.ravel().tolist(), fraction=0.028, pad=0.02)
@@ -107,12 +107,26 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
     return fig
 
 
-def probs_to_markdown(probs: np.ndarray) -> str:
-    order = np.argsort(-probs)
-    lines = ["| Class | Probability |", "|---|---:|"]
-    for i in order:
-        lines.append(f"| {CLASS_NAMES[i]} | {probs[i] * 100:.2f}% |")
-    return "\n".join(lines)
+def plot_class_probs(probs: np.ndarray):
+    fig, ax = plt.subplots(figsize=(7.2, 3.2), dpi=120)
+    labels = [f"C{i}\n{name}" for i, name in enumerate(CLASS_NAMES)]
+    pred_idx = int(np.argmax(probs))
+    colors = ["#4C78A8"] * len(probs)
+    colors[pred_idx] = "#F58518"
+
+    ax.bar(np.arange(len(probs)), probs * 100.0, color=colors)
+    ax.set_xticks(np.arange(len(probs)))
+    ax.set_xticklabels(labels)
+    ax.set_ylabel("Probability (%)")
+    ax.set_title("Class probabilities")
+    ax.set_ylim(0, 100)
+    ax.grid(axis="y", linestyle="--", alpha=0.3)
+
+    for i, p in enumerate(probs):
+        ax.text(i, p * 100.0 + 1.2, f"{p * 100:.1f}%", ha="center", va="bottom", fontsize=8)
+
+    fig.tight_layout()
+    return fig
 
 
 class Explainer:
@@ -168,10 +182,9 @@ class Explainer:
     def run(self, pil_img, layer_name="conv1", auto_select=True, manual_idx=0):
         if pil_img is None:
             return (
-                None, None, None, None, None, None, None, "",
-                "No image loaded.",
-                "Upload a fundus image, then click Run Explain.",
-                "No debug info.",
+                None, None, None, None, None, None, None, None,
+                "Upload an image, then click **Run Explain**.",
+                "Tip for presenter: start with Class chart, then show Conv → ReLU → Pool flow.",
                 gr.update()
             )
 
@@ -199,11 +212,7 @@ class Explainer:
 
         strength = np.mean(np.abs(conv), axis=(1, 2))
         strongest_idx = int(np.argmax(strength))
-
-        if auto_select:
-            fmap_idx = strongest_idx
-        else:
-            fmap_idx = int(np.clip(int(manual_idx), 0, conv.shape[0] - 1))
+        fmap_idx = strongest_idx if auto_select else int(np.clip(int(manual_idx), 0, conv.shape[0] - 1))
 
         conv01 = norm01(conv[fmap_idx])
         relu01 = norm01(relu[fmap_idx])
@@ -224,42 +233,32 @@ class Explainer:
         kernel_fig = plot_kernel_grid(
             np.array(kernels),
             top_channels,
-            title=f"Kernel inspector ({layer_name.upper()}): selected + top-3 channels",
+            title=f"Kernel view ({layer_name.upper()}): selected + top channels",
         )
         strength_fig = plot_strengths(strength, fmap_idx, layer_name)
+        class_fig = plot_class_probs(probs)
 
         pred_idx = int(np.argmax(probs))
         pred_name = CLASS_NAMES[pred_idx]
         pred_conf = float(probs[pred_idx])
 
-        relu_zero_frac = float(np.mean(relu[fmap_idx] <= 0))
-        score = float(strength[fmap_idx])
-
         summary = (
-            f"**Layer:** `{layer_name}`  \n"
-            f"**Selected channel:** `{fmap_idx}` ({'auto strongest' if auto_select else 'manual'})  \n"
-            f"**Selection score (mean |activation|):** `{score:.4f}`  \n"
-            f"**Prediction:** `{pred_name}` with confidence `{pred_conf:.2%}`"
+            f"### Quick read\n"
+            f"**Prediction:** Class {pred_idx} ({pred_name}) — **{pred_conf * 100:.1f}%**\n\n"
+            f"**Channel shown:** {fmap_idx} in {layer_name} ({'auto' if auto_select else 'manual'})\n\n"
+            "Use this story: Conv finds patterns, ReLU keeps strong positives, "
+            "Pool keeps the strongest local evidence."
         )
 
-        explain = (
-            "### Explain Panel\n"
-            f"- Feature map from **{layer_name}**, channel **{fmap_idx}**.\n"
-            f"- ReLU zeroed fraction for selected map: **{relu_zero_frac:.1%}**.\n"
-            "- MaxPool keeps strongest local evidence while downsampling.\n"
-            "- Overlay aligns selected convolution evidence with retinal structure.\n"
-            "- Kernel inspector shows learned \(3 \\times 3\) weights "
-            "(deeper layers shown as input-channel mean)."
-        )
-
-        debug = (
-            f"Strongest channel in {layer_name}: **{strongest_idx}**  \n"
-            f"Top-5 channels by strength: `{sorted_idx[:5]}`  \n"
-            f"Mode: `{'AUTO' if auto_select else 'MANUAL'}`"
+        notes = (
+            "### Presenter notes (minimal)\n"
+            "1. Start with **Class probabilities** (what model thinks).\n"
+            "2. Show **Conv → ReLU → Pool** images left-to-right.\n"
+            "3. Show **Overlay** to connect activation to retina regions.\n"
+            "4. If students ask “why this channel?” point to **channel strengths** graph."
         )
 
         slider_update = gr.update(value=int(fmap_idx))
-        probs_md = probs_to_markdown(probs)
 
         return (
             to_uint8(inp01),
@@ -269,10 +268,9 @@ class Explainer:
             overlay,
             kernel_fig,
             strength_fig,
-            probs_md,
+            class_fig,
             summary,
-            explain,
-            debug,
+            notes,
             slider_update,
         )
 
@@ -295,53 +293,48 @@ def build_app(ckpt_path: str):
     default_max = explainer.get_layer_max_channel(default_layer)
 
     with gr.Blocks(title="DR CNN Layer Explorer") as demo:
-        gr.Markdown("## Diabetic Retinopathy CNN Layer Explorer")
-        gr.Markdown("Upload a fundus image and inspect what CNN layers are passing forward.")
+        gr.Markdown("## DR CNN Layer Explorer (Classroom Demo)")
 
         with gr.Row(equal_height=True):
             with gr.Column(scale=5, min_width=360):
-                with gr.Group():
-                    inp = gr.Image(type="pil", label="Fundus Image", height=320)
-                    layer_select = gr.Dropdown(
-                        choices=explainer.available_layers,
-                        value=default_layer,
-                        label="Convolution Block to Inspect",
-                    )
-                    auto_select = gr.Checkbox(value=True, label="Auto-select strongest channel/kernel")
-                    manual_idx = gr.Slider(
-                        minimum=0,
-                        maximum=default_max,
-                        step=1,
-                        value=0,
-                        label="Manual channel index (used when auto-select is OFF)",
-                        interactive=False,
-                    )
-                    run_btn = gr.Button("Run Explain")
+                inp = gr.Image(type="pil", label="Fundus Image", height=320)
+                layer_select = gr.Dropdown(
+                    choices=explainer.available_layers,
+                    value=default_layer,
+                    label="Layer",
+                )
+                auto_select = gr.Checkbox(value=True, label="Auto-select strongest channel")
+                manual_idx = gr.Slider(
+                    minimum=0,
+                    maximum=default_max,
+                    step=1,
+                    value=0,
+                    label="Manual channel index",
+                    interactive=False,
+                )
+                run_btn = gr.Button("Run Explain")
 
             with gr.Column(scale=5, min_width=360):
-                with gr.Group():
-                    gr.Markdown(METRICS_MD)
-                    out_probs = gr.Markdown(label="Dense + Softmax Output")
-                    out_summary = gr.Markdown()
-                    out_explain = gr.Markdown()
-                    out_debug = gr.Markdown()
+                gr.Markdown(METRICS_MD)
+                out_class_plot = gr.Plot(label="Class probabilities (C0-C4)")
+                out_summary = gr.Markdown()
+                out_notes = gr.Markdown()
 
         with gr.Row(equal_height=True):
-            out_input = gr.Image(label="Input (single-channel used by CNN)", height=220)
-            out_conv = gr.Image(label="Convolution output (selected channel)", height=220)
-            out_relu = gr.Image(label="ReLU output", height=220)
-            out_pool = gr.Image(label="MaxPool output", height=170)
+            out_input = gr.Image(label="Input to CNN (single channel)", height=210)
+            out_conv = gr.Image(label="Conv output", height=210)
+            out_relu = gr.Image(label="ReLU output", height=210)
+            out_pool = gr.Image(label="Pool output", height=170)
 
         with gr.Row(equal_height=True):
-            out_overlay = gr.Image(label="Overlay (input + selected conv heat)", height=260)
-            with gr.Column():
-                out_kernel = gr.Plot(label="Kernel Inspector")
-                out_strength = gr.Plot(label="Activation Strengths")
+            out_overlay = gr.Image(label="Overlay: input + conv heat", height=250)
+            out_strength = gr.Plot(label="Channel strengths")
+            out_kernel = gr.Plot(label="Kernel view")
 
         gr.ClearButton(
             components=[
                 inp, out_input, out_conv, out_relu, out_pool, out_overlay,
-                out_kernel, out_strength, out_probs, out_summary, out_explain, out_debug
+                out_kernel, out_strength, out_class_plot, out_summary, out_notes
             ],
             value="Clear",
         )
@@ -354,8 +347,8 @@ def build_app(ckpt_path: str):
             inputs=[inp, layer_select, auto_select, manual_idx],
             outputs=[
                 out_input, out_conv, out_relu, out_pool, out_overlay,
-                out_kernel, out_strength, out_probs, out_summary, out_explain,
-                out_debug, manual_idx,
+                out_kernel, out_strength, out_class_plot, out_summary, out_notes,
+                manual_idx,
             ],
         )
 
