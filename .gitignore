@@ -17,3 +17,24 @@ kaggle.json
 .env
 .env.*
 *.env
+
+# Jupyter / VS Code
+*.ipynb
+.vscode/
+
+# Logs / artifacts
+*.log
+wandb/
+mlruns/
+runs/
+events.out.tfevents.*
+
+# OS / misc
+Thumbs.db
+
+# Common secret/key files
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.*
