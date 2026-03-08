@@ -94,8 +94,14 @@ def main():
 
     explainer = Explainer(args.ckpt)
 
-    def infer(img, fmap_idx, kernel_idx):
-        return explainer.run(img, fmap_idx, kernel_idx)
+    def infer(img, channel_mode, fmap_idx, link_kernel, kernel_idx):
+        return explainer.run(img, channel_mode, fmap_idx, link_kernel, kernel_idx)
+
+    def toggle_manual_channel(mode):
+        return gr.update(visible=(mode == "Manual"))
+
+    def toggle_manual_kernel(linked):
+        return gr.update(visible=(not linked))
 
     with gr.Blocks(title="DR CNN Layer Explorer") as demo:
         gr.Markdown("## Diabetic Retinopathy CNN Layer Explorer")
@@ -104,8 +110,16 @@ def main():
         with gr.Row():
             inp = gr.Image(type="pil", label="Fundus Image")
             with gr.Column():
-                fmap_idx = gr.Slider(0, 15, value=0, step=1, label="Feature map channel (Conv/ReLU/Pool)")
-                kernel_idx = gr.Slider(0, 15, value=0, step=1, label="Kernel index (Conv1)")
+                channel_mode = gr.Dropdown(
+                    choices=["Auto strongest", "Auto 2nd strongest", "Auto weakest", "Manual"],
+                    value="Auto strongest",
+                    label="Channel selection mode"
+                )
+                fmap_idx = gr.Slider(0, 15, value=0, step=1, label="Manual feature map channel", visible=False)
+
+                link_kernel = gr.Checkbox(value=True, label="Link kernel to selected channel (recommended)")
+                kernel_idx = gr.Slider(0, 15, value=0, step=1, label="Manual kernel index", visible=False)
+
                 btn = gr.Button("Run Explain")
 
         with gr.Row():
@@ -119,11 +133,15 @@ def main():
             out_bar = gr.Plot(label="Activation Strengths")
 
         out_probs = gr.Label(label="Dense + Softmax output (demo classes)")
+        out_info = gr.Textbox(label="Selection info", interactive=False)
+
+        channel_mode.change(toggle_manual_channel, inputs=channel_mode, outputs=fmap_idx)
+        link_kernel.change(toggle_manual_kernel, inputs=link_kernel, outputs=kernel_idx)
 
         btn.click(
             infer,
-            inputs=[inp, fmap_idx, kernel_idx],
-            outputs=[out_input, out_conv, out_relu, out_pool, out_kernel, out_bar, out_probs],
+            inputs=[inp, channel_mode, fmap_idx, link_kernel, kernel_idx],
+            outputs=[out_input, out_conv, out_relu, out_pool, out_kernel, out_bar, out_probs, out_info],
         )
 
     demo.launch(server_port=args.port, share=args.share)
