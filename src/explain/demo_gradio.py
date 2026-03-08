@@ -23,17 +23,17 @@ if str(SRC) not in sys.path:
 
 
 def _load_model_class():
-    # Force your exact training model first to avoid key mismatch warnings.
+    # Use your exact training model class
     from model import SimpleDRCNN
     return SimpleDRCNN
 
 
 def _extract_state_dict(ckpt_obj):
     """
-    Supports common checkpoint formats:
+    Supports:
     - {"model_state_dict": ...}
     - {"state_dict": ...}
-    - raw state_dict
+    - raw state_dict dict
     """
     if not isinstance(ckpt_obj, dict):
         raise RuntimeError("Checkpoint format not recognized (expected dict).")
@@ -81,14 +81,14 @@ class Explainer:
         ckpt = torch.load(ckpt_path, map_location=self.device)
         state_dict, meta = _extract_state_dict(ckpt)
 
-        # class names fallback
-        self.class_names = meta.get("class_names", ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"])
+        self.class_names = meta.get(
+            "class_names",
+            ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"],
+        )
 
         ModelClass = _load_model_class()
-        num_classes = len(self.class_names)
-        self.model = ModelClass(num_classes=num_classes).to(self.device)
+        self.model = ModelClass(num_classes=len(self.class_names)).to(self.device)
 
-        # strict=False but print exact keys if mismatch
         missing, unexpected = self.model.load_state_dict(state_dict, strict=False)
         if missing or unexpected:
             print(f"[warn] load_state_dict strict=False | missing={len(missing)}, unexpected={len(unexpected)}")
@@ -99,15 +99,11 @@ class Explainer:
 
         self.model.eval()
 
-        # first conv for explain visuals
+        # For your model this is conv1
         self.first_conv = self.model.conv1
         out_ch = int(self.first_conv.out_channels)
         self.max_channel = max(out_ch - 1, 0)
 
-        self.tf_rgb = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-        ])
         self.tf_gray = transforms.Compose([
             transforms.Resize((224, 224)),
             transforms.Grayscale(num_output_channels=1),
@@ -120,8 +116,7 @@ class Explainer:
             pil_img = Image.new("RGB", (224, 224), (0, 0, 0))
         pil_img = pil_img.convert("RGB")
 
-        x_gray = self.tf_gray(pil_img).unsqueeze(0).to(self.device)  # [1,1,224,224]
-        x_in = x_gray  # SimpleDRCNN uses 1 input channel
+        x_in = self.tf_gray(pil_img).unsqueeze(0).to(self.device)  # [1,1,224,224]
 
         conv_out = self.first_conv(x_in)  # [1,C,H,W]
         relu_out = F.relu(conv_out)
@@ -152,11 +147,10 @@ class Explainer:
         relu_img = _to_uint8(relu_out[0, fmap_idx].detach().cpu().numpy())
         pool_img = _to_uint8(pool_out[0, fmap_idx].detach().cpu().numpy())
 
-        # kernel display (conv1 has [C_out, 1, 3, 3])
+        # conv1 weight: [C_out, 1, 3, 3]
         k = self.first_conv.weight.detach().cpu().numpy()[kernel_idx, 0]
         kernel_img = _to_uint8(k)
 
-        # full forward prediction
         logits = self.model(x_in)
         probs = torch.softmax(logits, dim=1)[0].detach().cpu().numpy()
         pred_idx = int(np.argmax(probs))
@@ -264,7 +258,8 @@ def main():
     }
     """
 
-    with gr.Blocks(title="DR Layer Explorer — Retro Teaching Panel") as demo:
+    # Keep css in Blocks for your current Gradio version compatibility
+    with gr.Blocks(title="DR Layer Explorer — Retro Teaching Panel", css=css) as demo:
         gr.Markdown("""
 <div class="teaching-panel">
   <h2>DR Layer Explorer — Retro Teaching Panel</h2>
@@ -312,12 +307,10 @@ def main():
             outputs=[out_in, out_conv, out_relu, out_pool, fig_kernel, fig_act, probs_html, selection_info],
         )
 
-    # Gradio 6+ friendly: css passed to launch()
     demo.queue().launch(
         share=args.share,
         server_name=args.server_name,
         server_port=args.server_port,
-        css=css,
     )
 
 
