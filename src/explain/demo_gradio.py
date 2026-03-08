@@ -16,7 +16,6 @@ from transforms import get_transforms
 
 
 CLASS_NAMES = ["No DR", "Mild", "Moderate", "Severe", "Proliferative DR"]
-CLASS_LABELS = [f"Class {i}: {name}" for i, name in enumerate(CLASS_NAMES)]
 
 METRICS_MD = """
 ### Model snapshot
@@ -57,7 +56,7 @@ def make_overlay(gray01: np.ndarray, heat01: np.ndarray, alpha=0.45) -> np.ndarr
 
 
 def plot_strengths(strength: np.ndarray, selected: int, layer_name: str):
-    fig, ax = plt.subplots(figsize=(7.2, 2.8), dpi=120)
+    fig, ax = plt.subplots(figsize=(10.5, 3.0), dpi=120)
     colors = ["#4C78A8"] * len(strength)
     colors[selected] = "#54A24B"
     ax.bar(np.arange(len(strength)), strength, color=colors)
@@ -77,7 +76,6 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
     axes = np.array(axes).reshape(rows, cols)
 
     vmax = float(np.max(np.abs(kernels))) + 1e-8
-    im = None
 
     for i in range(rows * cols):
         ax = axes[i // cols, i % cols]
@@ -87,7 +85,7 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
 
         k = kernels[i]
         ch = channel_ids[i]
-        im = ax.imshow(k, cmap="coolwarm", vmin=-vmax, vmax=vmax)
+        ax.imshow(k, cmap="coolwarm", vmin=-vmax, vmax=vmax)
         ax.set_title(f"Channel {ch}", fontsize=10)
         ax.set_xticks([0, 1, 2])
         ax.set_yticks([0, 1, 2])
@@ -97,10 +95,6 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
                 v = float(k[r, c])
                 txt_color = "white" if abs(v) > 0.45 * vmax else "black"
                 ax.text(c, r, f"{v:.2f}", ha="center", va="center", fontsize=8, color=txt_color, fontweight="bold")
-
-    if im is not None:
-        cbar = fig.colorbar(im, ax=axes.ravel().tolist(), fraction=0.028, pad=0.02)
-        cbar.ax.set_ylabel("Weight", rotation=90)
 
     fig.suptitle(title, fontsize=11, y=0.995)
     fig.tight_layout()
@@ -181,12 +175,7 @@ class Explainer:
 
     def run(self, pil_img, layer_name="conv1", auto_select=True, manual_idx=0):
         if pil_img is None:
-            return (
-                None, None, None, None, None, None, None, None,
-                "Upload an image, then click **Run Explain**.",
-                "Tip for presenter: start with Class chart, then show Conv → ReLU → Pool flow.",
-                gr.update()
-            )
+            return (None, None, None, None, None, None, None, None, gr.update())
 
         if layer_name not in self.available_layers:
             layer_name = self.available_layers[0]
@@ -238,26 +227,6 @@ class Explainer:
         strength_fig = plot_strengths(strength, fmap_idx, layer_name)
         class_fig = plot_class_probs(probs)
 
-        pred_idx = int(np.argmax(probs))
-        pred_name = CLASS_NAMES[pred_idx]
-        pred_conf = float(probs[pred_idx])
-
-        summary = (
-            f"### Quick read\n"
-            f"**Prediction:** Class {pred_idx} ({pred_name}) — **{pred_conf * 100:.1f}%**\n\n"
-            f"**Channel shown:** {fmap_idx} in {layer_name} ({'auto' if auto_select else 'manual'})\n\n"
-            "Use this story: Conv finds patterns, ReLU keeps strong positives, "
-            "Pool keeps the strongest local evidence."
-        )
-
-        notes = (
-            "### Presenter notes (minimal)\n"
-            "1. Start with **Class probabilities** (what model thinks).\n"
-            "2. Show **Conv → ReLU → Pool** images left-to-right.\n"
-            "3. Show **Overlay** to connect activation to retina regions.\n"
-            "4. If students ask “why this channel?” point to **channel strengths** graph."
-        )
-
         slider_update = gr.update(value=int(fmap_idx))
 
         return (
@@ -269,8 +238,6 @@ class Explainer:
             kernel_fig,
             strength_fig,
             class_fig,
-            summary,
-            notes,
             slider_update,
         )
 
@@ -292,7 +259,19 @@ def build_app(ckpt_path: str):
     default_layer = explainer.available_layers[0]
     default_max = explainer.get_layer_max_channel(default_layer)
 
-    with gr.Blocks(title="DR CNN Layer Explorer") as demo:
+    css = """
+    #run-explain-btn {
+        background: #f97316 !important;
+        border-color: #f97316 !important;
+        color: white !important;
+    }
+    #run-explain-btn:hover {
+        background: #ea580c !important;
+        border-color: #ea580c !important;
+    }
+    """
+
+    with gr.Blocks(title="DR CNN Layer Explorer", css=css) as demo:
         gr.Markdown("## DR CNN Layer Explorer (Classroom Demo)")
 
         with gr.Row(equal_height=True):
@@ -312,29 +291,32 @@ def build_app(ckpt_path: str):
                     label="Manual channel index",
                     interactive=False,
                 )
-                run_btn = gr.Button("Run Explain")
+                run_btn = gr.Button("Run Explain", elem_id="run-explain-btn")
 
             with gr.Column(scale=5, min_width=360):
                 gr.Markdown(METRICS_MD)
                 out_class_plot = gr.Plot(label="Class probabilities (C0-C4)")
-                out_summary = gr.Markdown()
-                out_notes = gr.Markdown()
 
+        # Display Row 1
         with gr.Row(equal_height=True):
             out_input = gr.Image(label="Input to CNN (single channel)", height=210)
             out_conv = gr.Image(label="Conv output", height=210)
             out_relu = gr.Image(label="ReLU output", height=210)
-            out_pool = gr.Image(label="Pool output", height=170)
+            out_pool = gr.Image(label="Pool output", height=210)
 
+        # Display Row 2
         with gr.Row(equal_height=True):
             out_overlay = gr.Image(label="Overlay: input + conv heat", height=250)
-            out_strength = gr.Plot(label="Channel strengths")
             out_kernel = gr.Plot(label="Kernel view")
+
+        # Display Row 3 (full width)
+        with gr.Row():
+            out_strength = gr.Plot(label="Channel strengths")
 
         gr.ClearButton(
             components=[
                 inp, out_input, out_conv, out_relu, out_pool, out_overlay,
-                out_kernel, out_strength, out_class_plot, out_summary, out_notes
+                out_kernel, out_strength, out_class_plot
             ],
             value="Clear",
         )
@@ -347,8 +329,7 @@ def build_app(ckpt_path: str):
             inputs=[inp, layer_select, auto_select, manual_idx],
             outputs=[
                 out_input, out_conv, out_relu, out_pool, out_overlay,
-                out_kernel, out_strength, out_class_plot, out_summary, out_notes,
-                manual_idx,
+                out_kernel, out_strength, out_class_plot, manual_idx,
             ],
         )
 
