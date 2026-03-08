@@ -73,7 +73,7 @@ def plot_kernel_grid(kernels: np.ndarray, channel_ids, title: str):
     cols = 2
     rows = int(np.ceil(n / cols))
 
-    # Square figure for square-ish panel
+    # Square figure for square-looking panel
     fig, axes = plt.subplots(rows, cols, figsize=(7.0, 7.0), dpi=120)
     axes = np.array(axes).reshape(rows, cols)
 
@@ -270,19 +270,24 @@ def build_app(ckpt_path: str):
     default_layer = explainer.available_layers[0]
     default_max = explainer.get_layer_max_channel(default_layer)
 
-    css = """
-    #run-explain-btn {
-        background: #f97316 !important;
-        border-color: #f97316 !important;
-        color: white !important;
-    }
-    #run-explain-btn:hover {
-        background: #ea580c !important;
-        border-color: #ea580c !important;
-    }
-    """
-
     with gr.Blocks(title="DR CNN Layer Explorer") as demo:
+        # Cross-version-safe CSS injection
+        gr.HTML(
+            """
+            <style>
+            #run-explain-btn {
+                background: #f97316 !important;
+                border-color: #f97316 !important;
+                color: white !important;
+            }
+            #run-explain-btn:hover {
+                background: #ea580c !important;
+                border-color: #ea580c !important;
+            }
+            </style>
+            """
+        )
+
         gr.Markdown("## DR CNN Layer Explorer (Classroom Demo)")
 
         with gr.Row(equal_height=True):
@@ -315,7 +320,7 @@ def build_app(ckpt_path: str):
             out_relu = gr.Image(label="ReLU output", height=210)
             out_pool = gr.Image(label="Pool output", height=210)
 
-        # Display Row 2 (Overlay + Kernel view)
+        # Display Row 2: overlay + kernel
         with gr.Row(equal_height=True):
             with gr.Column(scale=1, min_width=420):
                 out_overlay = gr.Image(
@@ -326,7 +331,7 @@ def build_app(ckpt_path: str):
             with gr.Column(scale=1, min_width=420):
                 out_kernel = gr.Plot(label="Kernel view")
 
-        # Display Row 3 (full width)
+        # Display Row 3
         with gr.Row():
             out_strength = gr.Plot(label="Channel strengths")
 
@@ -364,7 +369,7 @@ def build_app(ckpt_path: str):
             ],
         )
 
-    return demo, css
+    return demo
 
 
 def main():
@@ -374,8 +379,8 @@ def main():
     parser.add_argument("--port", type=int, default=7860)
     args = parser.parse_args()
 
-    demo, css = build_app(args.ckpt)
-    demo.launch(server_port=args.port, share=args.share, css=css)
+    demo = build_app(args.ckpt)
+    demo.launch(server_port=args.port, share=args.share)
 
 
 if __name__ == "__main__":
