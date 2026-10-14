@@ -1,6 +1,6 @@
 # dr-demo-cnn
 
-A small, learning-focused deep learning project for diabetic retinopathy image classification.  kk
+A small, learning-focused deep learning project for diabetic retinopathy image classification.
 
 ## Project Introduction
 
